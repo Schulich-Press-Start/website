@@ -16,6 +16,10 @@ Home opens on an unframed product stage with oversized Press Start typography, t
 
 Team uses generous portrait spaces, names and roles outside the artwork, native disclosures and a short selection animation. President stays separate and leads stay first. Five photos were supplied in roster order for Mii-inspired character concepts. The user explicitly chose local review pending each member's approval; personal character configurations and rendered images stay in ignored local storage, served only by an opt-in development review. They must never enter production output or Git.
 
+Latest direction: retire the procedural character models. Use photo-conditioned AI-generated Mii-style images and, if supplied, matching short video clips. Do not create another handmade model or present old renders as generated images. No image/video generation service is connected to the current coding session; retain neutral placeholders until real generated assets are provided. Keep the same member-approval boundary.
+
+The handheld should lead the experience more decisively: a wide stage, a short replayable camera tour, close-up viewpoints, a clearly labelled illustrative screen boot, and inspection of the actual CAD surface. Do not invent an exploded internal assembly. All motion must be interruptible, finite and absent under reduced motion, with static-first delivery and native scrolling intact.
+
 ## Product Integrity
 
 Preserve the supplied rectangular screen, cross D-pad, four round action buttons, and two lower pill buttons. Allow image optimisation and documented background-only removal; never redraw or invent hardware. Grey shells are what the supplied renders show. Purple shells and orange/bronze controls are proposed colour concepts, not manufacturing commitments. Zephyr is the proposed embedded platform, subject to hardware selection; do not claim a custom kernel.

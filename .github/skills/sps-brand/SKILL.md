@@ -17,8 +17,9 @@ Read the [design brief](../../../design/brief.md), [asset inventory](../../../de
 4. Production uses licensed Kufam and Commissioner. Utendo Regular/Bold are local-review-only: the author's CC BY-NC-SA 4.0 terms contradict the third-party 100% Free listing. Confirm licence suitability before distributing them.
 5. Give the product breathing room and use large truthful imagery. Alternate unframed story layouts and full-width bands. Avoid feature-card grids, gradient decoration, custom cursors, scroll hijacking and repeated reveals.
 6. Preserve the prototype's rectangular screen, cross D-pad, four circular action buttons and two lower pill buttons. Purple shells and orange/bronze buttons are colour proposals, not final specifications.
-7. Team portraits should be consistent, member-approved, Mii-inspired static artwork with brief optional selection motion. The five photo-based concepts are local-only pending approval: personal parameters/renders stay in `.local/`, production uses labelled initials, and the opt-in review middleware must never enter a build. Never scrape LinkedIn photos.
+7. Use photo-conditioned AI-generated Mii-style images, not handmade or procedural character models. Prior models are retired. Optional matching silent videos use native controls, never autoplay. Generated media remains in `.local/` pending member approval; production uses labelled initials. Never scrape LinkedIn photos or claim media was generated when it was not.
 8. Use the supplied complete glTF/bin model for 3D. Preserve source geometry and validate packed binary equality. Load Three.js only after user activation, keep a responsive model-derived poster, and separate model controls from the viewing area. Colour-concept materials must stay labelled and source materials selectable.
+9. Keep camera tours finite, replayable and interruptible. Close-up and profile views must work with keyboard/touch. Label boot graphics as an illustrative screen concept, not firmware, and show only actual surface geometry in CAD inspection. Stop rendering when hidden/offscreen; honour reduced motion.
 
 ## Content And Interaction
 

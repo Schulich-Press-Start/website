@@ -5,7 +5,7 @@ import { getInitials, type Member } from '../data/model';
 
 interface Props { member: Member; }
 const { member } = Astro.props;
-const reviewPortrait = import.meta.env.DEV && process.env.SPS_REVIEW === '1' && existsSync(new URL(`../../.local/review/portraits/${member.id}.webp`, import.meta.url));
+const reviewPortrait = import.meta.env.DEV && process.env.SPS_REVIEW === '1' && existsSync(new URL(`../../.local/review/portraits/${member.id}-ai.webp`, import.meta.url));
 const tones: Record<string, string> = {
   'abdul-waase-qureshi': 'purple',
   'jonart-bajraktari': 'orange',
@@ -20,8 +20,7 @@ const tones: Record<string, string> = {
     <Image src={member.avatar.src} alt={member.avatar.alt} width={member.avatar.width} height={member.avatar.height} loading="lazy" />
   ) : reviewPortrait ? (
     <>
-      <img class="character-idle" src={`/__sps-review/portraits/${member.id}.webp`} alt={`Mii-inspired character concept for ${member.name}, awaiting member approval.`} width="640" height="768" loading="lazy" />
-      <img class="character-wave" src={`/__sps-review/portraits/${member.id}-wave.webp`} alt="" aria-hidden="true" width="640" height="768" loading="lazy" />
+      <img class="generated-portrait" src={`/__sps-review/portraits/${member.id}-ai.webp`} alt={`AI-generated Mii-style portrait concept for ${member.name}, awaiting member approval.`} width="640" height="768" loading="lazy" />
       <span class="portrait-caption">Concept / awaiting approval</span>
     </>
   ) : (

@@ -3,7 +3,10 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-export async function mountHandheld(container: HTMLElement) {
+type ViewName = 'overview' | 'controls' | 'profile';
+type ViewerOptions = { onPlaybackChange?: (playing: boolean) => void; onViewChange?: (view: ViewName) => void };
+
+export async function mountHandheld(container: HTMLElement, options: ViewerOptions = {}) {
   const canvas = container.querySelector<HTMLCanvasElement>('canvas')!;
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: 'low-power', preserveDrawingBuffer: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
@@ -55,6 +58,8 @@ export async function mountHandheld(container: HTMLElement) {
 
   const originalMaterials = new Map<THREE.Mesh, THREE.Material | THREE.Material[]>();
   const conceptMaterials: THREE.Material[] = [];
+  const inspectionMaterials: THREE.Material[] = [];
+  let screen: THREE.Mesh | undefined;
   model.traverse((object) => {
     if (!(object instanceof THREE.Mesh)) return;
     originalMaterials.set(object, object.material);
@@ -73,6 +78,7 @@ export async function mountHandheld(container: HTMLElement) {
         material.color.set('#12111e');
         material.metalness = 0.15;
         material.roughness = 0.23;
+        screen = object;
       } else {
         material.color.set('#252130');
         material.roughness = 0.55;
@@ -81,8 +87,83 @@ export async function mountHandheld(container: HTMLElement) {
       return material;
     });
     object.userData.conceptMaterials = Array.isArray(object.material) ? styled : styled[0];
+    const inspected = styled.map((material) => {
+      const translucent = material.clone();
+      translucent.color.set('#59327e');
+      translucent.transparent = true;
+      translucent.opacity = 0.09;
+      translucent.depthWrite = false;
+      inspectionMaterials.push(translucent);
+      return translucent;
+    });
+    object.userData.inspectionMaterials = Array.isArray(object.material) ? inspected : inspected[0];
     object.material = object.userData.conceptMaterials;
   });
+
+  const display = document.createElement('canvas');
+  display.width = 768;
+  display.height = 600;
+  const displayContext = display.getContext('2d')!;
+  const displayTexture = new THREE.CanvasTexture(display);
+  displayTexture.colorSpace = THREE.SRGBColorSpace;
+  const displayMaterial = new THREE.MeshBasicMaterial({ map: displayTexture, toneMapped: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  let displayPanel: THREE.Mesh | undefined;
+  if (screen) {
+    const geometry = screen.geometry.clone();
+    const positions = geometry.getAttribute('position');
+    const uv = new Float32Array(positions.count * 2);
+    geometry.computeBoundingBox();
+    const screenBounds = geometry.boundingBox!;
+    for (let index = 0; index < positions.count; index++) {
+      uv[index * 2] = (positions.getY(index) - screenBounds.min.y) / (screenBounds.max.y - screenBounds.min.y);
+      uv[index * 2 + 1] = (positions.getZ(index) - screenBounds.min.z) / (screenBounds.max.z - screenBounds.min.z);
+    }
+    geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    displayPanel = new THREE.Mesh(geometry, displayMaterial);
+    displayPanel.position.x = 0.00008;
+    displayPanel.visible = false;
+    screen.add(displayPanel);
+  }
+  const lineMaterial = new THREE.LineBasicMaterial({ color: '#ffbb70', transparent: true, opacity: 0.9, depthTest: true, toneMapped: false });
+  for (const mesh of originalMaterials.keys()) {
+    const lines = new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry, 18), lineMaterial);
+    mesh.add(lines);
+    mesh.userData.inspectionLines = lines;
+    lines.visible = false;
+  }
+
+  let powered = false;
+  let conceptEnabled = true;
+  let inspecting = false;
+  let screenProgress = 1;
+  const drawDisplay = (progress = 1) => {
+    screenProgress = progress;
+    displayContext.fillStyle = '#151222';
+    displayContext.fillRect(0, 0, 768, 600);
+    displayContext.strokeStyle = '#302541';
+    displayContext.lineWidth = 1;
+    for (let row = 0; row < 600; row += 30) {
+      displayContext.beginPath();
+      displayContext.moveTo(0, row);
+      displayContext.lineTo(768, row);
+      displayContext.stroke();
+    }
+    displayContext.fillStyle = '#bfa6ef';
+    displayContext.font = '24px sans-serif';
+    displayContext.textAlign = 'center';
+    displayContext.fillText('SCHULICH', 384, 150);
+    displayContext.fillStyle = '#fff6e8';
+    displayContext.font = 'bold 76px sans-serif';
+    displayContext.fillText('PRESS START', 384, 265);
+    displayContext.fillStyle = '#f7a056';
+    displayContext.fillRect(144, 337, 480 * progress, 10);
+    displayContext.strokeStyle = '#f7a056';
+    displayContext.strokeRect(144, 337, 480, 10);
+    displayContext.font = '22px sans-serif';
+    displayContext.fillText(progress < 1 ? 'STARTING SOMETHING GOOD' : 'MADE TO PLAY. MADE BY US.', 384, 410);
+    displayTexture.needsUpdate = true;
+    if (displayPanel) displayPanel.visible = powered && conceptEnabled && !inspecting;
+  };
 
   const controls = new OrbitControls(camera, canvas);
   controls.enableDamping = false;
@@ -93,29 +174,89 @@ export async function mountHandheld(container: HTMLElement) {
   const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
   let frame = 0;
   let disposed = false;
+  let playing = false;
+  const views: Record<ViewName, { position: [number, number, number]; target: [number, number, number] }> = {
+    overview: { position: [2.6, 0.75, 6.35], target: [0, 0, 0] },
+    controls: { position: [1.0, -0.15, 4.1], target: [0, -0.50, 0.05] },
+    profile: { position: [6.4, 0.7, 2.1], target: [0, 0, 0] },
+  };
   const render = () => { if (!disposed) renderer.render(scene, camera); };
-  const stop = () => { cancelAnimationFrame(frame); frame = 0; };
-  const reset = () => {
-    stop();
+  const setPlaying = (value: boolean) => {
+    if (playing === value) return;
+    playing = value;
+    container.dataset.playing = String(value);
+    options.onPlaybackChange?.(value);
+  };
+  const stop = () => { cancelAnimationFrame(frame); frame = 0; setPlaying(false); };
+  const applyView = (name: ViewName) => {
+    camera.position.set(...views[name].position);
+    controls.target.set(...views[name].target);
+    controls.update();
+    options.onViewChange?.(name);
+  };
+  const clearPresentation = () => {
     presentation.rotation.set(0, 0, 0);
     presentation.position.set(0, 0, 0);
-    camera.position.set(1.7, 0.7, 6.5);
-    controls.target.set(0, 0, 0);
-    controls.update();
+  };
+  const reset = () => {
+    stop();
+    clearPresentation();
+    applyView('overview');
+    drawDisplay();
     render();
   };
   const intro = () => {
     reset();
+    powered = true;
+    drawDisplay();
+    render();
     if (motion.matches) return;
     const started = performance.now();
+    const initialPosition = new THREE.Vector3(4.8, 1.9, 6.2);
+    const controlsPosition = new THREE.Vector3(...views.controls.position);
+    const overviewPosition = new THREE.Vector3(...views.overview.position);
+    const controlsTarget = new THREE.Vector3(...views.controls.target);
+    setPlaying(true);
     const step = (now: number) => {
-      const progress = Math.min((now - started) / 1500, 1);
-      const remaining = (1 - progress) ** 3;
-      presentation.rotation.y = -0.7 * remaining;
-      presentation.rotation.z = -0.15 * remaining;
-      presentation.position.y = -0.22 * remaining;
+      const progress = Math.min((now - started) / 4400, 1);
+      const part = progress < 0.52 ? progress / 0.52 : (progress - 0.52) / 0.48;
+      const eased = part * part * (3 - 2 * part);
+      if (progress < 0.52) {
+        camera.position.lerpVectors(initialPosition, controlsPosition, eased);
+        controls.target.copy(controlsTarget).multiplyScalar(eased);
+      } else {
+        camera.position.lerpVectors(controlsPosition, overviewPosition, eased);
+        controls.target.copy(controlsTarget).multiplyScalar(1 - eased);
+      }
+      presentation.rotation.z = -Math.sin(progress * Math.PI) * 0.10;
+      controls.update();
+      drawDisplay(Math.min(progress * 2.6, 1));
       render();
       if (progress < 1) frame = requestAnimationFrame(step);
+      else { frame = 0; setPlaying(false); }
+    };
+    frame = requestAnimationFrame(step);
+  };
+  const selectView = (name: ViewName) => {
+    stop();
+    clearPresentation();
+    options.onViewChange?.(name);
+    const initialPosition = camera.position.clone();
+    const initialTarget = controls.target.clone();
+    const targetPosition = new THREE.Vector3(...views[name].position);
+    const targetLook = new THREE.Vector3(...views[name].target);
+    if (motion.matches) { applyView(name); render(); return; }
+    const started = performance.now();
+    setPlaying(true);
+    const step = (now: number) => {
+      const progress = Math.min((now - started) / 700, 1);
+      const eased = 1 - (1 - progress) ** 3;
+      camera.position.lerpVectors(initialPosition, targetPosition, eased);
+      controls.target.lerpVectors(initialTarget, targetLook, eased);
+      controls.update();
+      render();
+      if (progress < 1) frame = requestAnimationFrame(step);
+      else { frame = 0; setPlaying(false); }
     };
     frame = requestAnimationFrame(step);
   };
@@ -136,6 +277,8 @@ export async function mountHandheld(container: HTMLElement) {
   const onVisibility = () => { if (document.hidden) stop(); };
   motion.addEventListener('change', onMotionChange);
   document.addEventListener('visibilitychange', onVisibility);
+  const intersectionObserver = new IntersectionObserver(([entry]) => { if (!entry.isIntersecting) stop(); });
+  intersectionObserver.observe(container);
 
   const rotate = (horizontal: number, vertical = 0) => {
     stop();
@@ -152,10 +295,31 @@ export async function mountHandheld(container: HTMLElement) {
   reset();
   return {
     intro,
+    stop,
     reset,
     rotate,
+    selectView,
+    setPowered(value: boolean) {
+      stop();
+      powered = value;
+      drawDisplay();
+      render();
+    },
+    setInspection(value: boolean) {
+      stop();
+      inspecting = value;
+      for (const [mesh, original] of originalMaterials) {
+        mesh.userData.inspectionLines.visible = value;
+        mesh.material = value ? mesh.userData.inspectionMaterials : conceptEnabled ? mesh.userData.conceptMaterials : original;
+      }
+      drawDisplay();
+      render();
+    },
     setConcept(concept: boolean) {
-      for (const [mesh, original] of originalMaterials) mesh.material = concept ? mesh.userData.conceptMaterials : original;
+      stop();
+      conceptEnabled = concept;
+      for (const [mesh, original] of originalMaterials) mesh.material = inspecting ? mesh.userData.inspectionMaterials : concept ? mesh.userData.conceptMaterials : original;
+      drawDisplay(screenProgress);
       render();
     },
     dispose() {
@@ -163,11 +327,17 @@ export async function mountHandheld(container: HTMLElement) {
       disposed = true;
       controls.dispose();
       resizeObserver.disconnect();
+      intersectionObserver.disconnect();
       motion.removeEventListener('change', onMotionChange);
       document.removeEventListener('visibilitychange', onVisibility);
       model.traverse((object) => { if (object instanceof THREE.Mesh) object.geometry.dispose(); });
+      for (const mesh of originalMaterials.keys()) mesh.userData.inspectionLines.geometry.dispose();
+      lineMaterial.dispose();
+      displayTexture.dispose();
+      displayMaterial.dispose();
       for (const materials of originalMaterials.values()) for (const material of Array.isArray(materials) ? materials : [materials]) material.dispose();
       conceptMaterials.forEach((material) => material.dispose());
+      inspectionMaterials.forEach((material) => material.dispose());
       environmentMap.dispose();
       renderer.dispose();
     },

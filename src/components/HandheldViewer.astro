@@ -1,6 +1,6 @@
 ---
 import { Image } from 'astro:assets';
-import { Box, ArrowLeft, ArrowRight, RotateCcw, Play, X } from '@lucide/astro';
+import { Box, ArrowLeft, ArrowRight, RotateCcw, Play, X, Pause, Power, ScanLine } from '@lucide/astro';
 import poster from '../assets/handheld-concept.webp';
 
 interface Props { compact?: boolean; }
@@ -17,11 +17,19 @@ const { compact = false } = Astro.props;
     <p class="viewer-status" role="status" aria-live="polite" data-viewer-status></p>
   </div>
   <div class="viewer-controls" data-viewer-controls hidden>
+    <div class="viewer-views" role="group" aria-label="Camera view">
+      <button type="button" aria-pressed="true" data-viewer-view="overview">Overview</button>
+      <button type="button" aria-pressed="false" data-viewer-view="controls">Controls</button>
+      <button type="button" aria-pressed="false" data-viewer-view="profile">Profile</button>
+    </div>
     <div class="viewer-tools" role="group" aria-label="Model orientation">
       <button class="icon-button" type="button" data-viewer-left aria-label="Rotate model left" title="Rotate left"><ArrowLeft size={18} aria-hidden="true" /></button>
       <button class="icon-button" type="button" data-viewer-right aria-label="Rotate model right" title="Rotate right"><ArrowRight size={18} aria-hidden="true" /></button>
       <button class="icon-button" type="button" data-viewer-reset aria-label="Reset model view" title="Reset view"><RotateCcw size={18} aria-hidden="true" /></button>
       <button class="icon-button" type="button" data-viewer-replay aria-label="Replay model animation" title="Replay animation"><Play size={18} aria-hidden="true" /></button>
+      <button class="icon-button" type="button" data-viewer-stop aria-label="Stop model animation" title="Stop animation" disabled><Pause size={18} aria-hidden="true" /></button>
+      <button class="icon-button" type="button" data-viewer-power aria-label="Screen concept power" title="Screen concept power" aria-pressed="false"><Power size={18} aria-hidden="true" /></button>
+      <button class="icon-button" type="button" data-viewer-inspect aria-label="Inspect CAD edges" title="Inspect CAD edges" aria-pressed="false"><ScanLine size={18} aria-hidden="true" /></button>
       <button class="icon-button" type="button" data-viewer-close aria-label="Close 3D view" title="Close 3D"><X size={18} aria-hidden="true" /></button>
     </div>
     <div class="viewer-materials" role="group" aria-label="Model materials">
@@ -29,6 +37,7 @@ const { compact = false } = Astro.props;
       <button class="material-swatch swatch-original" type="button" aria-label="Source CAD materials" title="Source CAD materials" aria-pressed="false" data-viewer-original></button>
       <span data-viewer-material-label>Colour concept</span>
     </div>
+    <p class="viewer-concept-note">Screen animation is illustrative, not working firmware.</p>
   </div>
 </div>
 
@@ -44,9 +53,14 @@ const { compact = false } = Astro.props;
     const concept = viewer.querySelector<HTMLButtonElement>('[data-viewer-concept]')!;
     const original = viewer.querySelector<HTMLButtonElement>('[data-viewer-original]')!;
     const materialLabel = viewer.querySelector<HTMLElement>('[data-viewer-material-label]')!;
+    const power = viewer.querySelector<HTMLButtonElement>('[data-viewer-power]')!;
+    const inspection = viewer.querySelector<HTMLButtonElement>('[data-viewer-inspect]')!;
+    const stop = viewer.querySelector<HTMLButtonElement>('[data-viewer-stop]')!;
+    const viewButtons = viewer.querySelectorAll<HTMLButtonElement>('[data-viewer-view]');
     let instance: Awaited<ReturnType<typeof import('../lib/handheld-viewer').mountHandheld>> | undefined;
     let loading = false;
     load.hidden = false;
+    const setViewSelection = (name: string) => viewButtons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.viewerView === name)));
 
     const close = () => {
       instance?.dispose();
@@ -56,6 +70,7 @@ const { compact = false } = Astro.props;
       poster.hidden = false;
       load.hidden = false;
       viewer.dataset.ready = 'false';
+      viewer.dataset.inspection = 'false';
       status.textContent = '';
       label.textContent = 'Explore in 3D';
       load.focus();
@@ -69,7 +84,13 @@ const { compact = false } = Astro.props;
       try {
         const { mountHandheld } = await import('../lib/handheld-viewer');
         canvas.hidden = false;
-        instance = await mountHandheld(scene);
+        instance = await mountHandheld(scene, {
+          onPlaybackChange: (playing) => {
+            stop.disabled = !playing;
+            viewer.dataset.playing = String(playing);
+          },
+          onViewChange: setViewSelection,
+        });
         poster.hidden = true;
         load.hidden = true;
         controls.hidden = false;
@@ -77,6 +98,9 @@ const { compact = false } = Astro.props;
         concept.setAttribute('aria-pressed', 'true');
         original.setAttribute('aria-pressed', 'false');
         materialLabel.textContent = 'Colour concept';
+        power.setAttribute('aria-pressed', 'true');
+        inspection.setAttribute('aria-pressed', 'false');
+        viewer.dataset.inspection = 'false';
         status.textContent = '';
         instance.intro();
         canvas.focus({ preventScroll: true });
@@ -94,7 +118,25 @@ const { compact = false } = Astro.props;
     viewer.querySelector('[data-viewer-left]')!.addEventListener('click', () => instance?.rotate(-0.3));
     viewer.querySelector('[data-viewer-right]')!.addEventListener('click', () => instance?.rotate(0.3));
     viewer.querySelector('[data-viewer-reset]')!.addEventListener('click', () => instance?.reset());
-    viewer.querySelector('[data-viewer-replay]')!.addEventListener('click', () => instance?.intro());
+    viewer.querySelector('[data-viewer-replay]')!.addEventListener('click', () => {
+      instance?.intro();
+      power.setAttribute('aria-pressed', 'true');
+    });
+    stop.addEventListener('click', () => instance?.stop());
+    for (const button of viewButtons) button.addEventListener('click', () => {
+      instance?.selectView(button.dataset.viewerView as 'overview' | 'controls' | 'profile');
+    });
+    power.addEventListener('click', () => {
+      const active = power.getAttribute('aria-pressed') !== 'true';
+      instance?.setPowered(active);
+      power.setAttribute('aria-pressed', String(active));
+    });
+    inspection.addEventListener('click', () => {
+      const active = inspection.getAttribute('aria-pressed') !== 'true';
+      instance?.setInspection(active);
+      inspection.setAttribute('aria-pressed', String(active));
+      viewer.dataset.inspection = String(active);
+    });
     viewer.querySelector('[data-viewer-close]')!.addEventListener('click', close);
     for (const [button, isConcept] of [[concept, true], [original, false]] as const) {
       button.addEventListener('click', () => {

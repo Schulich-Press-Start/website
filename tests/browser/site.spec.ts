@@ -254,7 +254,7 @@ test('3D is on demand, framed, interactive and keyboard accessible', async ({ pa
   const loadBox = await load.boundingBox();
   expect(loadBox!.y).toBeGreaterThanOrEqual(posterSceneBox!.y + posterSceneBox!.height - 1);
   await load.click();
-  await expect(viewer).toHaveAttribute('data-ready', 'true');
+  await expect(viewer).toHaveAttribute('data-ready', 'true', { timeout: 15_000 });
   const canvas = viewer.locator('canvas');
   await expect(canvas).toBeVisible();
   await expect(canvas).toBeFocused();
@@ -305,6 +305,9 @@ test('3D is on demand, framed, interactive and keyboard accessible', async ({ pa
   const reducedFrame = await canvas.evaluate((element) => (element as HTMLCanvasElement).toDataURL());
   await canvas.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   expect(await canvas.evaluate((element) => (element as HTMLCanvasElement).toDataURL())).toBe(reducedFrame);
+  await viewer.getByRole('button', { name: 'Inspect CAD edges' }).click();
+  await expect(viewer).toHaveAttribute('data-inspection', 'true');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   const scan = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
   expect(scan.violations).toEqual([]);
   await testInfo.attach('interactive-handheld', { body: await page.screenshot(), contentType: 'image/png' });
@@ -334,4 +337,47 @@ test('production never exposes private review assets', async ({ page, request },
   }
   const response = await request.get('/__sps-review/portraits/abdul-waase-qureshi.webp');
   expect(response.status()).toBe(404);
+});
+
+test('product tour, camera presets, screen and CAD inspection respond to input', async ({ page }) => {
+  await visit(page, '/handheld/');
+  const viewer = page.locator('[data-handheld-viewer]');
+  await viewer.getByRole('button', { name: 'Explore in 3D' }).click();
+  await expect(viewer).toHaveAttribute('data-ready', 'true', { timeout: 15_000 });
+  const canvas = viewer.locator('canvas');
+  const capture = () => canvas.evaluate((element) => (element as HTMLCanvasElement).toDataURL());
+  const stop = viewer.getByRole('button', { name: 'Stop model animation' });
+  await viewer.getByRole('button', { name: 'Replay model animation' }).click();
+  await expect(stop).toBeEnabled();
+  const playingFrame = await capture();
+  await expect.poll(capture).not.toBe(playingFrame);
+  await viewer.getByRole('button', { name: 'Replay model animation' }).click();
+  await expect(stop).toBeEnabled();
+  await stop.click();
+  await expect(viewer).toHaveAttribute('data-playing', 'false');
+  const stoppedFrame = await capture();
+  await canvas.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  expect(await capture()).toBe(stoppedFrame);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await viewer.getByRole('button', { name: 'Overview', exact: true }).click();
+  const overview = await capture();
+  await viewer.getByRole('button', { name: 'Controls', exact: true }).click();
+  await expect(viewer.getByRole('button', { name: 'Controls', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  expect(await capture()).not.toBe(overview);
+  await viewer.getByRole('button', { name: 'Profile', exact: true }).click();
+  expect(await capture()).not.toBe(overview);
+  await viewer.getByRole('button', { name: 'Overview', exact: true }).click();
+  const powered = await capture();
+  await viewer.getByRole('button', { name: 'Screen concept power' }).click();
+  await expect(viewer.getByRole('button', { name: 'Screen concept power' })).toHaveAttribute('aria-pressed', 'false');
+  expect(await capture()).not.toBe(powered);
+  const smooth = await capture();
+  await viewer.getByRole('button', { name: 'Inspect CAD edges' }).click();
+  expect(await capture()).not.toBe(smooth);
+  await expect(viewer.getByText('Screen animation is illustrative, not working firmware.')).toBeVisible();
+  await viewer.getByRole('button', { name: 'Replay model animation' }).click();
+  await expect(stop).toBeDisabled();
+  await expect(viewer).toHaveAttribute('data-playing', 'false');
+  const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(results.violations).toEqual([]);
 });

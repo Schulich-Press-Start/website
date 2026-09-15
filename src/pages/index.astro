@@ -12,21 +12,25 @@ import closeUp from '../../design/reference/prototype1-3.png';
 ---
 
 <BaseLayout title={site.name}>
-  <section class="home-hero dark" aria-labelledby="hero-title" data-product-stage>
-    <div class="container hero-inner">
-      <div class="hero-copy">
-        <span class="status">University of Calgary / Engineering design club</span>
-        <h1 id="hero-title"><span class="hero-school">Schulich</span><span>press</span><span>start.</span></h1>
-        <p class="hero-description">We play games.<br /> We build the whole thing.</p>
+  <section class="home-hero product-theatre" aria-labelledby="hero-title" data-product-stage>
+    <div class="container theatre-inner">
+      <div class="theatre-meta"><span>University of Calgary</span><span>Engineering, with a playful side.</span></div>
+      <div class="theatre-stage">
+        <h1 id="hero-title" class="theatre-title"><span class="theatre-school">Schulich</span><span class="theatre-press">press</span><span class="theatre-start">start.</span></h1>
+        <figure class="hero-product theatre-model">
+          <HandheldViewer compact />
+          <figcaption>The SPS handheld / Colour concept</figcaption>
+        </figure>
+        <span class="theatre-detail theatre-detail-left">Custom handheld hardware.<br />Original games.</span>
+        <span class="theatre-detail theatre-detail-right">Student-built.<br />Still taking shape.</span>
+      </div>
+      <div class="theatre-bottom">
+        <p>We play games.<br /> We build the whole thing.</p>
         <div class="actions">
-          <a class="button button-light" href="/handheld/">Meet our handheld <ArrowUpRight size={19} aria-hidden="true" /></a>
+          <a class="button" href="/handheld/">Meet our handheld <ArrowUpRight size={19} aria-hidden="true" /></a>
           <a class="text-link" href="/join/">Join the build <ChevronRight size={17} aria-hidden="true" /></a>
         </div>
       </div>
-      <figure class="hero-product">
-        <HandheldViewer compact />
-        <figcaption><span class="status">The SPS handheld</span><span>Actual CAD geometry / Colour concept</span></figcaption>
-      </figure>
     </div>
     <div class="hero-footer">
       <div class="container">
@@ -120,7 +124,7 @@ import closeUp from '../../design/reference/prototype1-3.png';
         { transform: 'translateY(18px) rotate(-11deg)', opacity: 0.65 },
         { transform: 'translateY(-8px) rotate(3deg)', opacity: 1, offset: 0.65 },
         { transform: 'translateY(0) rotate(-4deg)', opacity: 1 },
-      ], { duration: 1200, easing: 'cubic-bezier(.2,.7,.2,1)' });
+      ], { duration: 1400, easing: 'cubic-bezier(.2,.7,.2,1)' });
     };
     motion.addEventListener('change', () => image.getAnimations().forEach((animation) => animation.cancel()));
     introduce();

@@ -17,7 +17,7 @@ SPS logos and CAD images were supplied for this project. They are not relicensed
 
 The user supplied Utendo Regular and Bold TTFs and five portrait references. The [current author listing](https://www.dafont.com/utendo.font) identifies LyonsType and specifies [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/), despite [wfonts](https://www.wfonts.com/font/utendo) describing the family as 100% Free. Unmodified fonts are used in local noncommercial review with author/source/licence attribution. They remain ignored and excluded from production until licence suitability is confirmed.
 
-The character concepts are original Three.js artwork based on user-provided photos, not Nintendo model assets. They are Mii-inspired, not official Mii files or a claim of affiliation. Personal render parameters and images remain local because member approval is pending. Only the reusable rendering code is tracked.
+The prior procedural character concepts and rendering scripts are retired. Their private files have not been published. Future portraits must be genuinely generated from the supplied references, with each member's approval before publication; there are currently no newly generated portraits or clips. Mii-style is an aesthetic reference, not official Nintendo artwork or a claim of affiliation.
 
 ## Repository-Only Skills
 

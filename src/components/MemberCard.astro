@@ -1,5 +1,6 @@
 ---
 import { ArrowUpRight, Plus } from '@lucide/astro';
+import { existsSync } from 'node:fs';
 import Avatar from './Avatar.astro';
 import { getRoleLabel, type Member, type Membership, type Division } from '../data/model';
 
@@ -7,6 +8,9 @@ interface Props { member: Member; membership: Membership; division?: Division; }
 const { member, membership, division } = Astro.props;
 const roleLabel = getRoleLabel(membership, division);
 const identifier = `member-${member.id}-${membership.divisionId ?? 'presidency'}`;
+const reviewVideo = import.meta.env.DEV && process.env.SPS_REVIEW === '1'
+  && existsSync(new URL(`../../.local/review/portraits/${member.id}-ai.webp`, import.meta.url))
+  && existsSync(new URL(`../../.local/review/portraits/${member.id}-ai.mp4`, import.meta.url));
 ---
 
 <details class="member-card" id={identifier} name="sps-roster" data-member>
@@ -24,17 +28,28 @@ const identifier = `member-${member.id}-${membership.divisionId ?? 'presidency'}
     {member.interests.length > 0 && <ul class="interests">{member.interests.map((interest) => <li>{interest}</li>)}</ul>}
     {division && !member.biography && <p>{division.description}</p>}
     <a class="text-link" href={member.linkedin} aria-label={`${member.name} on LinkedIn`}>LinkedIn profile <ArrowUpRight size={16} aria-hidden="true" /></a>
+    {reviewVideo && (
+      <figure class="portrait-film">
+        <video controls muted playsinline preload="none" width="640" height="768" poster={`/__sps-review/portraits/${member.id}-ai.webp`} aria-label={`${member.name} silent character-animation concept`}>
+          <source src={`/__sps-review/portraits/${member.id}-ai.mp4`} type="video/mp4" />
+        </video>
+        <figcaption>Silent animation concept / awaiting member approval.</figcaption>
+      </figure>
+    )}
     {member.avatar && <p class="small">Portrait: {member.avatar.credit}</p>}
   </div>
 </details>
 
 <script>
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const pausePortraitVideos = () => document.querySelectorAll<HTMLVideoElement>('.portrait-film video').forEach((video) => video.pause());
   reducedMotion.addEventListener('change', () => {
     if (reducedMotion.matches) {
       document.querySelectorAll('.portrait').forEach((portrait) => portrait.getAnimations().forEach((animation) => animation.cancel()));
+      pausePortraitVideos();
     }
   });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) pausePortraitVideos(); });
   for (const card of document.querySelectorAll<HTMLDetailsElement>('[data-member]')) {
     const summary = card.querySelector('summary');
     const profile = card.querySelector<HTMLAnchorElement>('.member-details a[href]');
@@ -54,6 +69,7 @@ const identifier = `member-${member.id}-${membership.divisionId ?? 'presidency'}
       }
     });
     card.addEventListener('toggle', () => {
+      if (!card.open) card.querySelectorAll('video').forEach((video) => video.pause());
       const url = new URL(window.location.href);
       const portrait = card.querySelector<HTMLElement>('.portrait');
       portrait?.getAnimations().forEach((animation) => animation.cancel());

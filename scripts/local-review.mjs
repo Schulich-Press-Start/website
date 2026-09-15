@@ -14,13 +14,13 @@ export function localReviewPlugin() {
           return;
         }
         const filename = pathname.slice('/__sps-review/'.length);
-        if (!/^(portraits\/[a-z-]+\.webp|fonts\/Utendo-(Regular|Bold)\.ttf|review\.css|font-license\.txt)$/.test(filename)) {
+        if (!/^(portraits\/[a-z-]+-ai\.(webp|mp4)|fonts\/Utendo-(Regular|Bold)\.ttf|review\.css|font-license\.txt)$/.test(filename)) {
           response.writeHead(404).end();
           return;
         }
         try {
           const bytes = await readFile(new URL(`../.local/review/${filename}`, import.meta.url));
-          const contentType = filename.endsWith('.webp') ? 'image/webp' : filename.endsWith('.ttf') ? 'font/ttf' : filename.endsWith('.css') ? 'text/css' : 'text/plain';
+          const contentType = filename.endsWith('.webp') ? 'image/webp' : filename.endsWith('.mp4') ? 'video/mp4' : filename.endsWith('.ttf') ? 'font/ttf' : filename.endsWith('.css') ? 'text/css' : 'text/plain';
           response.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow' });
           response.end(bytes);
         } catch {
