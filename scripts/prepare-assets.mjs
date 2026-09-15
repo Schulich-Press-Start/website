@@ -1,11 +1,13 @@
 import sharp from 'sharp';
 import { copyFile, mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
+import { prepareModel } from './model-assets.mjs';
 
 const sourceDirectory = new URL('../design/reference/', import.meta.url);
 const outputDirectory = new URL('../src/assets/generated/', import.meta.url);
 await mkdir(outputDirectory, { recursive: true });
 await mkdir(new URL('../public/', import.meta.url), { recursive: true });
+await prepareModel();
 
 const licenceDirectory = new URL('../public/licenses/', import.meta.url);
 await mkdir(licenceDirectory, { recursive: true });
@@ -13,6 +15,7 @@ for (const [packageName, destination] of [
   ['@fontsource-variable/kufam', 'kufam.txt'],
   ['@fontsource-variable/commissioner', 'commissioner.txt'],
   ['@lucide/astro', 'lucide.txt'],
+  ['three', 'three.txt'],
 ]) {
   await copyFile(new URL(`../node_modules/${packageName}/LICENSE`, import.meta.url), new URL(destination, licenceDirectory));
 }

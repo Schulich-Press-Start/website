@@ -1,0 +1,121 @@
+---
+import { Image } from 'astro:assets';
+import { Box, ArrowLeft, ArrowRight, RotateCcw, Play, X } from '@lucide/astro';
+import poster from '../assets/handheld-concept.webp';
+
+interface Props { compact?: boolean; }
+const { compact = false } = Astro.props;
+---
+
+<div class:list={['handheld-viewer', { 'viewer-compact': compact }]} data-handheld-viewer>
+  <div class="viewer-scene" data-viewer-scene>
+    <Image class="viewer-poster" src={poster} alt="The actual SPS handheld CAD geometry rendered in a proposed purple shell with orange controls: rectangular screen, cross D-pad, four round buttons and two lower pill buttons." width={618} widths={[200, 360, 618]} sizes="(max-width: 39rem) 180px, 360px" loading={compact ? 'eager' : 'lazy'} fetchpriority={compact ? 'high' : 'auto'} />
+    <canvas class="viewer-canvas" tabindex="0" role="img" aria-label="Interactive SPS handheld model. Arrow keys rotate, Home resets, Escape returns to the static image." hidden></canvas>
+  </div>
+  <div class="viewer-launch">
+    <button class="viewer-load button" type="button" data-viewer-load hidden><Box size={18} aria-hidden="true" /><span data-viewer-load-label>Explore in 3D</span></button>
+    <p class="viewer-status" role="status" aria-live="polite" data-viewer-status></p>
+  </div>
+  <div class="viewer-controls" data-viewer-controls hidden>
+    <div class="viewer-tools" role="group" aria-label="Model orientation">
+      <button class="icon-button" type="button" data-viewer-left aria-label="Rotate model left" title="Rotate left"><ArrowLeft size={18} aria-hidden="true" /></button>
+      <button class="icon-button" type="button" data-viewer-right aria-label="Rotate model right" title="Rotate right"><ArrowRight size={18} aria-hidden="true" /></button>
+      <button class="icon-button" type="button" data-viewer-reset aria-label="Reset model view" title="Reset view"><RotateCcw size={18} aria-hidden="true" /></button>
+      <button class="icon-button" type="button" data-viewer-replay aria-label="Replay model animation" title="Replay animation"><Play size={18} aria-hidden="true" /></button>
+      <button class="icon-button" type="button" data-viewer-close aria-label="Close 3D view" title="Close 3D"><X size={18} aria-hidden="true" /></button>
+    </div>
+    <div class="viewer-materials" role="group" aria-label="Model materials">
+      <button class="material-swatch swatch-concept" type="button" aria-label="Purple and orange colour concept" title="Purple / orange concept" aria-pressed="true" data-viewer-concept></button>
+      <button class="material-swatch swatch-original" type="button" aria-label="Source CAD materials" title="Source CAD materials" aria-pressed="false" data-viewer-original></button>
+      <span data-viewer-material-label>Colour concept</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  for (const viewer of document.querySelectorAll<HTMLElement>('[data-handheld-viewer]')) {
+    const scene = viewer.querySelector<HTMLElement>('[data-viewer-scene]')!;
+    const canvas = viewer.querySelector<HTMLCanvasElement>('canvas')!;
+    const poster = viewer.querySelector<HTMLImageElement>('.viewer-poster')!;
+    const load = viewer.querySelector<HTMLButtonElement>('[data-viewer-load]')!;
+    const label = viewer.querySelector<HTMLElement>('[data-viewer-load-label]')!;
+    const status = viewer.querySelector<HTMLElement>('[data-viewer-status]')!;
+    const controls = viewer.querySelector<HTMLElement>('[data-viewer-controls]')!;
+    const concept = viewer.querySelector<HTMLButtonElement>('[data-viewer-concept]')!;
+    const original = viewer.querySelector<HTMLButtonElement>('[data-viewer-original]')!;
+    const materialLabel = viewer.querySelector<HTMLElement>('[data-viewer-material-label]')!;
+    let instance: Awaited<ReturnType<typeof import('../lib/handheld-viewer').mountHandheld>> | undefined;
+    let loading = false;
+    load.hidden = false;
+
+    const close = () => {
+      instance?.dispose();
+      instance = undefined;
+      canvas.hidden = true;
+      controls.hidden = true;
+      poster.hidden = false;
+      load.hidden = false;
+      viewer.dataset.ready = 'false';
+      status.textContent = '';
+      label.textContent = 'Explore in 3D';
+      load.focus();
+    };
+    load.addEventListener('click', async () => {
+      if (loading) return;
+      loading = true;
+      load.disabled = true;
+      label.textContent = 'Loading model';
+      status.textContent = 'Loading the handheld model.';
+      try {
+        const { mountHandheld } = await import('../lib/handheld-viewer');
+        canvas.hidden = false;
+        instance = await mountHandheld(scene);
+        poster.hidden = true;
+        load.hidden = true;
+        controls.hidden = false;
+        viewer.dataset.ready = 'true';
+        concept.setAttribute('aria-pressed', 'true');
+        original.setAttribute('aria-pressed', 'false');
+        materialLabel.textContent = 'Colour concept';
+        status.textContent = '';
+        instance.intro();
+        canvas.focus({ preventScroll: true });
+      } catch {
+        instance?.dispose();
+        canvas.hidden = true;
+        poster.hidden = false;
+        status.textContent = '3D is unavailable here. The prototype image is still available.';
+        label.textContent = 'Retry 3D';
+      } finally {
+        loading = false;
+        load.disabled = false;
+      }
+    });
+    viewer.querySelector('[data-viewer-left]')!.addEventListener('click', () => instance?.rotate(-0.3));
+    viewer.querySelector('[data-viewer-right]')!.addEventListener('click', () => instance?.rotate(0.3));
+    viewer.querySelector('[data-viewer-reset]')!.addEventListener('click', () => instance?.reset());
+    viewer.querySelector('[data-viewer-replay]')!.addEventListener('click', () => instance?.intro());
+    viewer.querySelector('[data-viewer-close]')!.addEventListener('click', close);
+    for (const [button, isConcept] of [[concept, true], [original, false]] as const) {
+      button.addEventListener('click', () => {
+        instance?.setConcept(isConcept);
+        concept.setAttribute('aria-pressed', String(isConcept));
+        original.setAttribute('aria-pressed', String(!isConcept));
+        materialLabel.textContent = isConcept ? 'Colour concept' : 'Source CAD materials';
+      });
+    }
+    viewer.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && instance) close();
+      if (event.target !== canvas || !instance) return;
+      const rotations: Record<string, [number, number]> = { ArrowLeft: [-0.2, 0], ArrowRight: [0.2, 0], ArrowUp: [0, -0.15], ArrowDown: [0, 0.15] };
+      if (rotations[event.key]) {
+        event.preventDefault();
+        instance.rotate(...rotations[event.key]);
+      } else if (event.key === 'Home') {
+        event.preventDefault();
+        instance.reset();
+      }
+    });
+    window.addEventListener('pagehide', () => instance?.dispose(), { once: true });
+  }
+</script>

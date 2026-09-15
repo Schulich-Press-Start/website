@@ -3,6 +3,8 @@ import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import sharp from 'sharp';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { packageGlb } from '../scripts/model-assets.mjs';
 import { club, currentRoster, site } from '../src/data/club.ts';
 import { academicYearSchema, clubSchema, getInitials, getPublishedEntries, getRoleLabel, getRosterEntries, journalEntrySchema, memberSchema, siteSettingsSchema } from '../src/data/model.ts';
 
@@ -120,4 +122,22 @@ test('vendored skills match the inspected upstream Git blobs', () => {
     const actual = createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
     assert.equal(actual, expected, filename);
   }
+});
+
+test('the real handheld GLB retains every source geometry byte', async () => {
+  const document = JSON.parse(readFileSync('design/reference/handheld/SPS_V1_07.20.gltf', 'utf8'));
+  const binary = readFileSync('design/reference/handheld/SPS V1 07.20.bin');
+  const packed = packageGlb(document, binary);
+  assert.deepEqual(packed.subarray(28 + packed.readUInt32LE(12)), binary);
+  assert.deepEqual(readFileSync('public/models/sps-handheld.glb'), packed);
+  assert.throws(() => packageGlb(document, Buffer.alloc(0)), /geometry is incomplete/);
+  const gltf = await new GLTFLoader().parseAsync(packed.buffer.slice(packed.byteOffset, packed.byteOffset + packed.byteLength), '');
+  let vertices = 0;
+  gltf.scene.traverse((object) => {
+    if ('isMesh' in object && object.isMesh && 'geometry' in object) {
+      const geometry = object.geometry as import('three').BufferGeometry;
+      vertices += geometry.attributes.position.count;
+    }
+  });
+  assert.equal(vertices, 5850);
 });

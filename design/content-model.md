@@ -17,6 +17,8 @@ Keep unknowns in the ignored `.local/content-checklist.md`. Repository documenta
 - `Game`: stable ID, name and summary only when supplied, status, approved image and credits, optional playable URL. No demo game may masquerade as club work.
 - `SiteSettings`: verified GitHub repository URL, recruitment state, optional HTTPS application URL, optional approved public contact, optional sponsor prospectus, optional production origin. Missing endpoints produce honest non-submitting states rather than dead links or fake forms.
 
+Private visual review is not public content: the user supplied five photo references but requested member approval before publication. Personal appearance configurations and idle/wave render assets live only in ignored `.local/`. A loopback-only opt-in development middleware can display them; the public `Member.avatar` schema and approval gate remain unchanged. No environment flag may enable these concepts in static output.
+
 ## Initial Roster
 
 | Person | Leadership | Public link |

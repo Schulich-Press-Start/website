@@ -14,10 +14,11 @@ Read the [design brief](../../../design/brief.md), [asset inventory](../../../de
 1. Begin with the real Game Boy-inspired SPS handheld and the supplied logo, not stock hardware or a generic product mockup.
 2. Use a deep-purple product canvas, brand-board purples, warm white, and selective orange/bronze accents. Shared CSS variables own the palette and type scale.
 3. Preserve logo geometry. Use the documented variant for the background; do not redraw, recolour or typeset an approximation.
-4. Use self-hosted licensed Kufam and Commissioner as the current fallbacks. Utendo needs both authorised webfont files and web-use permission before use.
+4. Production uses licensed Kufam and Commissioner. Utendo Regular/Bold are local-review-only: the author's CC BY-NC-SA 4.0 terms contradict the third-party 100% Free listing. Confirm licence suitability before distributing them.
 5. Give the product breathing room and use large truthful imagery. Alternate unframed story layouts and full-width bands. Avoid feature-card grids, gradient decoration, custom cursors, scroll hijacking and repeated reveals.
 6. Preserve the prototype's rectangular screen, cross D-pad, four circular action buttons and two lower pill buttons. Purple shells and orange/bronze buttons are colour proposals, not final specifications.
-7. Team portraits should be consistent, member-approved, Mii-inspired static artwork. Until approved, use explicitly labelled initials placeholders. Never scrape LinkedIn photos or imply inspiration-image characters are members.
+7. Team portraits should be consistent, member-approved, Mii-inspired static artwork with brief optional selection motion. The five photo-based concepts are local-only pending approval: personal parameters/renders stay in `.local/`, production uses labelled initials, and the opt-in review middleware must never enter a build. Never scrape LinkedIn photos.
+8. Use the supplied complete glTF/bin model for 3D. Preserve source geometry and validate packed binary equality. Load Three.js only after user activation, keep a responsive model-derived poster, and separate model controls from the viewing area. Colour-concept materials must stay labelled and source materials selectable.
 
 ## Content And Interaction
 

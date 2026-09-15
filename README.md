@@ -31,10 +31,11 @@ npm run test:e2e
 
 - Content tests cover real roster integrity, lead ordering, cross-references, academic years, consent, draft publication, safe configuration, source-image pixel preservation, licences and vendored skill hashes.
 - Playwright covers the six pages with Chromium desktop/tablet/phone and WebKit phone, including axe WCAG checks, touch, keyboard, focus return, no JavaScript, reduced motion, CSP, local-only requests, 404s, internal links and anchors.
-- Extra layout checks cover 320x568, 375x667, 1280x720 and 1920x1080. Two browser-independent tests run only on desktop; the other six project instances are intentionally skipped.
+- Model tests verify source-geometry byte equality, on-demand loading, nonblank and fully framed canvas pixels, keyboard rotation, material switching, finite/reduced motion, failure fallback and private-review exclusion.
+- Extra layout checks cover 320x568, 375x667, 1280x720 and 1920x1080. Three browser-independent tests run only on desktop; the other nine project instances are intentionally skipped.
 - Screenshots and accessibility JSON are attached to the ignored Playwright HTML report. `npx playwright show-report` opens it locally. Automated accessibility checks supplement, not replace, assistive-technology and real-device testing.
 
-See the [first-version verification report](docs/verification.md) for executed results, inspected viewports and testing limits.
+See the [verification report](docs/verification.md) for executed results, inspected viewports and testing limits.
 
 For a production preview outside the test runner:
 
@@ -55,6 +56,27 @@ Home, Handheld, Team, Journal, Join and Support are prerendered HTML. There is n
 ### Members And Academic Years
 
 Only the five supplied members are included. Initials marked "Portrait pending" are not invented likenesses. Add an approved static avatar under `public/images/team/` and fill in its dimensions, alt text, credit and `approved: true` only after member permission. Optional biographies/interests require `profileApproved: true`. Keep approval evidence privately; publish only approved credits and public links.
+
+### Local Character And Utendo Review
+
+The local redesign preview uses five photo-based character concepts with neutral/wave poses. Member-specific parameters and images are intentionally not committed. With the local files present, run:
+
+```sh
+node scripts/render-portraits.mjs
+SPS_REVIEW=1 npm run dev -- --port 4321
+```
+
+The user requested local concepts pending member approval. These assets are served only in development from ignored `.local/review/` through a loopback-only route. Production output never contains them, even with `SPS_REVIEW=1`. Do not move them to `public/` until consent is recorded. The renderer takes its private parameters from `.local/portrait-concepts.json`; a clean clone deliberately cannot reconstruct personal likenesses without those local inputs.
+
+Utendo Regular/Bold also remain in local review with attribution. The author's current licence is CC BY-NC-SA 4.0, not the unrestricted licence suggested by the third-party listing. Confirm its suitability before production; the build continues to use the unrestricted OFL fallbacks. See [asset evidence](design/asset-inventory.md).
+
+### Interactive Handheld
+
+Home and Handheld offer Explore in 3D using the supplied SolidWorks glTF/bin export. The geometry is packed into GLB during `npm run assets` without modification. Source files and conversion history are in [model provenance](design/reference/handheld/SOURCE.md).
+
+The poster is immediate; the renderer and model load only after activation. Rotate by dragging, using the arrow buttons, or focusing the canvas and using arrow keys. Home resets the view, Escape closes it, and the replay button runs a brief entrance animation. Colour swatches select the purple/orange concept or original CAD materials. Reduced motion disables the entrance motion. Failed WebGL/model loading retains the static poster and a retry action.
+
+To regenerate the tracked model poster after a deliberate presentation change, start the local site and run `node scripts/render-model.mjs`. This uses the actual model, never a hand-drawn approximation. Three.js is a substantial optional chunk (about 637 KB uncompressed) and triggers Vite's size warning; browser tests ensure it is not fetched at initial load.
 
 The initial roster is labelled "current" with `academicYear: null` because tenure has not been confirmed. Once confirmed, assign its consecutive-year ID. When a year ends, retain its membership rows, change that roster to `archived`, and create a new current roster and new membership rows. Never edit archived membership roles or divisions to reflect current appointments. The archive route generator emits only confirmed archived years. There are no fabricated historical teams.
 

@@ -12,7 +12,7 @@ const identifier = `member-${member.id}-${membership.divisionId ?? 'presidency'}
 <details class="member-card" id={identifier} name="sps-roster" data-member>
   <summary aria-label={`${member.name}, ${roleLabel}${member.coFounder ? ' and Co-Founder' : ''}`}>
     <Avatar member={member} />
-    <span>
+    <span class="member-identity">
       <span class="member-name">{member.name}</span>
       <span class="member-role">{roleLabel}</span>
       {member.coFounder && <span class="member-founder">Co-Founder</span>}
@@ -29,6 +29,12 @@ const identifier = `member-${member.id}-${membership.divisionId ?? 'presidency'}
 </details>
 
 <script>
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  reducedMotion.addEventListener('change', () => {
+    if (reducedMotion.matches) {
+      document.querySelectorAll('.portrait').forEach((portrait) => portrait.getAnimations().forEach((animation) => animation.cancel()));
+    }
+  });
   for (const card of document.querySelectorAll<HTMLDetailsElement>('[data-member]')) {
     const summary = card.querySelector('summary');
     const profile = card.querySelector<HTMLAnchorElement>('.member-details a[href]');
@@ -49,6 +55,15 @@ const identifier = `member-${member.id}-${membership.divisionId ?? 'presidency'}
     });
     card.addEventListener('toggle', () => {
       const url = new URL(window.location.href);
+      const portrait = card.querySelector<HTMLElement>('.portrait');
+      portrait?.getAnimations().forEach((animation) => animation.cancel());
+      if (card.open && portrait && !reducedMotion.matches) {
+        portrait.animate([
+          { transform: 'translateY(0) rotate(0)' },
+          { transform: 'translateY(-8px) rotate(-3deg)', offset: 0.4 },
+          { transform: 'translateY(0) rotate(0)' },
+        ], { duration: 550, easing: 'cubic-bezier(.2,.7,.2,1)' });
+      }
       if (card.open) {
         url.hash = card.id;
         history.replaceState(null, '', url);

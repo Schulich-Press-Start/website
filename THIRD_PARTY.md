@@ -7,10 +7,17 @@
 | Kufam Variable, Latin WOFF2 | https://fontsource.org/fonts/kufam | 5.3.0 | [SIL OFL-1.1](public/licenses/kufam.txt) |
 | Commissioner Variable, Latin WOFF2 | https://fontsource.org/fonts/commissioner | 5.3.0 | [SIL OFL-1.1](public/licenses/commissioner.txt) |
 | Lucide Astro icons | https://lucide.dev/guide/astro/ | 1.46.0 | [ISC and Feather-derived MIT notices](public/licenses/lucide.txt) |
+| Three.js, loaded on demand for the handheld | https://threejs.org/ | 0.186.0 | [MIT](public/licenses/three.txt) |
 
-The asset-preparation script copies these full licence and attribution notices from the exact installed packages into the deployed `licenses/` directory. Fonts are self-hosted; there are no font-provider requests from the browser. Utendo is not used because no authorised font files or web-use licence were supplied.
+The asset-preparation script copies these full licence and attribution notices from the exact installed packages into the deployed `licenses/` directory. Fonts are self-hosted; there are no font-provider requests from the browser. Utendo is not part of the production build.
 
 SPS logos and CAD images were supplied for this project. They are not relicensed by the third-party licence declarations above. Original files are retained in [design/reference](design/reference). The avatar inspiration image is reference-only and is not included in the website build. No member photographs have been scraped or published.
+
+## Local-Only Materials
+
+The user supplied Utendo Regular and Bold TTFs and five portrait references. The [current author listing](https://www.dafont.com/utendo.font) identifies LyonsType and specifies [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/), despite [wfonts](https://www.wfonts.com/font/utendo) describing the family as 100% Free. Unmodified fonts are used in local noncommercial review with author/source/licence attribution. They remain ignored and excluded from production until licence suitability is confirmed.
+
+The character concepts are original Three.js artwork based on user-provided photos, not Nintendo model assets. They are Mii-inspired, not official Mii files or a claim of affiliation. Personal render parameters and images remain local because member approval is pending. Only the reusable rendering code is tracked.
 
 ## Repository-Only Skills
 

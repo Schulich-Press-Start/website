@@ -150,9 +150,12 @@ test('member selection has native disclosure, deep links and focus restoration',
 });
 
 test('reduced motion disables interaction animation without hiding content', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
   await visit(page, '/team/');
   const summary = page.locator('#member-yassin-soliman-embedded-software summary');
+  await summary.click();
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect.poll(() => page.evaluate(() => document.getAnimations().length)).toBe(0);
+  await summary.click();
   await summary.click();
   expect(await summary.locator('.member-toggle-icon').evaluate((element) => getComputedStyle(element).transitionDuration)).toBe('0s');
   expect(await page.evaluate(() => document.getAnimations().length)).toBe(0);
@@ -236,4 +239,99 @@ test.describe('without client JavaScript', () => {
     await expect(page).toHaveURL('/handheld/');
     await expect(page.getByText('Zephyr is our current proposed embedded platform, subject to hardware selection.')).toBeVisible();
   });
+});
+
+test('3D is on demand, framed, interactive and keyboard accessible', async ({ page }, testInfo) => {
+  const modelRequests: string[] = [];
+  const runtimeErrors: string[] = [];
+  page.on('request', (request) => { if (request.url().includes('sps-handheld.glb') || request.url().includes('handheld-viewer')) modelRequests.push(request.url()); });
+  page.on('pageerror', (error) => runtimeErrors.push(error.message));
+  await visit(page, '/');
+  expect(modelRequests).toEqual([]);
+  const viewer = page.locator('[data-handheld-viewer]');
+  const load = viewer.getByRole('button', { name: 'Explore in 3D' });
+  const posterSceneBox = await viewer.locator('.viewer-scene').boundingBox();
+  const loadBox = await load.boundingBox();
+  expect(loadBox!.y).toBeGreaterThanOrEqual(posterSceneBox!.y + posterSceneBox!.height - 1);
+  await load.click();
+  await expect(viewer).toHaveAttribute('data-ready', 'true');
+  const canvas = viewer.locator('canvas');
+  await expect(canvas).toBeVisible();
+  await expect(canvas).toBeFocused();
+  const canvasBox = await canvas.boundingBox();
+  const controlsBox = await viewer.locator('[data-viewer-controls]').boundingBox();
+  expect(controlsBox!.y).toBeGreaterThanOrEqual(canvasBox!.y + canvasBox!.height - 1);
+  expect(modelRequests.some((url) => url.includes('sps-handheld.glb'))).toBe(true);
+  await viewer.getByRole('button', { name: 'Reset model view' }).click();
+  const pixels = await canvas.evaluate((element) => {
+    const canvas = element as HTMLCanvasElement;
+    const context = canvas.getContext('webgl2')!;
+    const pixels = new Uint8Array(canvas.width * canvas.height * 4);
+    context.readPixels(0, 0, canvas.width, canvas.height, context.RGBA, context.UNSIGNED_BYTE, pixels);
+    let opaque = 0;
+    let minColumn = canvas.width;
+    let maxColumn = 0;
+    let minRow = canvas.height;
+    let maxRow = 0;
+    for (let offset = 3; offset < pixels.length; offset += 4) {
+      if (pixels[offset] < 200) continue;
+      opaque++;
+      const pixel = (offset - 3) / 4;
+      const column = pixel % canvas.width;
+      const row = Math.floor(pixel / canvas.width);
+      minColumn = Math.min(minColumn, column);
+      maxColumn = Math.max(maxColumn, column);
+      minRow = Math.min(minRow, row);
+      maxRow = Math.max(maxRow, row);
+    }
+    return { fraction: opaque / (canvas.width * canvas.height), minColumn, maxColumn, minRow, maxRow, width: canvas.width, height: canvas.height };
+  });
+  expect(pixels.fraction).toBeGreaterThan(0.05);
+  expect(pixels.minColumn).toBeGreaterThan(1);
+  expect(pixels.minRow).toBeGreaterThan(1);
+  expect(pixels.maxColumn).toBeLessThan(pixels.width - 1);
+  expect(pixels.maxRow).toBeLessThan(pixels.height - 1);
+  const initial = await canvas.evaluate((element) => (element as HTMLCanvasElement).toDataURL());
+  await canvas.focus();
+  await page.keyboard.press('ArrowRight');
+  const rotated = await canvas.evaluate((element) => (element as HTMLCanvasElement).toDataURL());
+  expect(rotated).not.toBe(initial);
+  await viewer.getByRole('button', { name: 'Source CAD materials' }).click();
+  await expect(viewer.getByRole('button', { name: 'Source CAD materials' })).toHaveAttribute('aria-pressed', 'true');
+  expect(await canvas.evaluate((element) => (element as HTMLCanvasElement).toDataURL())).not.toBe(rotated);
+  await viewer.getByRole('button', { name: 'Purple and orange colour concept' }).click();
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await viewer.getByRole('button', { name: 'Replay model animation' }).click();
+  const reducedFrame = await canvas.evaluate((element) => (element as HTMLCanvasElement).toDataURL());
+  await canvas.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  expect(await canvas.evaluate((element) => (element as HTMLCanvasElement).toDataURL())).toBe(reducedFrame);
+  const scan = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(scan.violations).toEqual([]);
+  await testInfo.attach('interactive-handheld', { body: await page.screenshot(), contentType: 'image/png' });
+  await canvas.focus();
+  await page.keyboard.press('Escape');
+  await expect(canvas).toBeHidden();
+  await expect(load).toBeFocused();
+  await expect(viewer.locator('.viewer-poster')).toBeVisible();
+  expect(runtimeErrors).toEqual([]);
+});
+
+test('3D load failure keeps a useful static presentation', async ({ page }) => {
+  await page.route('**/models/sps-handheld.glb', (route) => route.abort());
+  await visit(page, '/handheld/');
+  await page.getByRole('button', { name: 'Explore in 3D' }).click();
+  await expect(page.locator('[data-viewer-status]')).toContainText('3D is unavailable here');
+  await expect(page.locator('.viewer-poster')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Retry 3D' })).toBeEnabled();
+});
+
+test('production never exposes private review assets', async ({ page, request }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium-desktop', 'The static publication boundary is browser independent.');
+  for (const route of ['/', '/team/']) {
+    await visit(page, route);
+    await expect(page.locator('[data-local-review], .character-idle, .character-wave')).toHaveCount(0);
+    expect(await page.content()).not.toContain('/__sps-review/');
+  }
+  const response = await request.get('/__sps-review/portraits/abdul-waase-qureshi.webp');
+  expect(response.status()).toBe(404);
 });

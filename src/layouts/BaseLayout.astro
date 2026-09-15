@@ -7,6 +7,7 @@ import displayFont from '@fontsource-variable/kufam/files/kufam-latin-wght-norma
 import bodyFont from '@fontsource-variable/commissioner/files/commissioner-latin-wght-normal.woff2?url';
 import '../styles/global.css';
 import '../styles/content.css';
+import '../styles/studio.css';
 
 interface Props {
   title: string;
@@ -17,10 +18,11 @@ const { title, description = site.description } = Astro.props;
 const pathname = Astro.url.pathname;
 const canonical = site.productionOrigin ? new URL(pathname, site.productionOrigin).href : undefined;
 const pageTitle = title === site.name ? site.name : `${title} | ${site.name}`;
+const localReview = import.meta.env.DEV && process.env.SPS_REVIEW === '1';
 ---
 
 <!doctype html>
-<html lang="en-CA">
+<html lang="en-CA" data-local-review={localReview || undefined}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -37,6 +39,7 @@ const pageTitle = title === site.name ? site.name : `${title} | ${site.name}`;
     <link rel="icon" href="/favicon.png" type="image/png" />
     <link rel="preload" href={displayFont} as="font" type="font/woff2" crossorigin />
     <link rel="preload" href={bodyFont} as="font" type="font/woff2" crossorigin />
+    {localReview && <link rel="stylesheet" href="/__sps-review/review.css" />}
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -66,6 +69,7 @@ const pageTitle = title === site.name ? site.name : `${title} | ${site.name}`;
     <main id="main" tabindex="-1"><slot /></main>
     <footer class="site-footer">
       <div class="container">
+        <p class="footer-statement" aria-hidden="true">Built for the<br />love of play.</p>
         <div class="footer-main">
           <div class="footer-brand">
             <a href="/" aria-label="Schulich Press Start home"><Image src={logo} alt="" width={192} widths={[192, 384]} sizes="192px" /></a>
@@ -88,6 +92,7 @@ const pageTitle = title === site.name ? site.name : `${title} | ${site.name}`;
           <span>Schulich Press Start</span>
           <span>Custom hardware. Original games. Made together.</span>
         </div>
+        {localReview && <p class="review-notice">Local concept review. Portraits await member approval. <a href="/__sps-review/font-license.txt">Utendo by LyonsType / CC BY-NC-SA 4.0</a></p>}
       </div>
     </footer>
   </body>
