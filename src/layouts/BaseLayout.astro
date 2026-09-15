@@ -1,0 +1,132 @@
+---
+import { Image } from 'astro:assets';
+import { ArrowUpRight, ChevronRight, Menu, X } from '@lucide/astro';
+import { navigation, site } from '../data/club';
+import logo from '../assets/generated/logo-dark-surface.png';
+import displayFont from '@fontsource-variable/kufam/files/kufam-latin-wght-normal.woff2?url';
+import bodyFont from '@fontsource-variable/commissioner/files/commissioner-latin-wght-normal.woff2?url';
+import '../styles/global.css';
+import '../styles/content.css';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = site.description } = Astro.props;
+const pathname = Astro.url.pathname;
+const canonical = site.productionOrigin ? new URL(pathname, site.productionOrigin).href : undefined;
+const pageTitle = title === site.name ? site.name : `${title} | ${site.name}`;
+---
+
+<!doctype html>
+<html lang="en-CA">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#241533" />
+    {!site.indexable && <meta name="robots" content="noindex, nofollow" />}
+    <title>{pageTitle}</title>
+    {canonical && <link rel="canonical" href={canonical} />}
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={site.name} />
+    {canonical && <meta property="og:url" content={canonical} />}
+    <link rel="icon" href="/favicon.png" type="image/png" />
+    <link rel="preload" href={displayFont} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={bodyFont} as="font" type="font/woff2" crossorigin />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="container header-inner">
+        <a class="brand" href="/" aria-label="Schulich Press Start home" aria-current={pathname === '/' ? 'page' : undefined}>
+          <Image src={logo} alt="" width={184} widths={[184, 368]} sizes="184px" loading="eager" />
+        </a>
+        <button class="menu-toggle" type="button" data-menu-toggle hidden aria-label="Open navigation" title="Open navigation" aria-expanded="false" aria-controls="site-navigation">
+          <Menu size={22} class="menu-open-icon" aria-hidden="true" />
+          <X size={22} class="menu-close-icon" aria-hidden="true" />
+        </button>
+        <nav id="site-navigation" aria-label="Main navigation">
+          <ul class="nav-list">
+            {navigation.map((item) => (
+              <li>
+                <a href={item.href} class:list={{ 'nav-join': item.href === '/join/' }} aria-current={pathname.startsWith(item.href) ? 'page' : undefined}>
+                  {item.label}
+                  {item.href === '/join/' && <ChevronRight size={16} aria-hidden="true" />}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </div>
+    </header>
+    <main id="main" tabindex="-1"><slot /></main>
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-main">
+          <div class="footer-brand">
+            <a href="/" aria-label="Schulich Press Start home"><Image src={logo} alt="" width={192} widths={[192, 384]} sizes="192px" /></a>
+            <p>A student-built way to play.<br />University of Calgary.</p>
+          </div>
+          <nav class="footer-links" aria-label="Footer navigation">
+            <ul>
+              <li><a href="/handheld/">The handheld</a></li>
+              <li><a href="/team/">Our team</a></li>
+              <li><a href="/journal/">Build journal</a></li>
+            </ul>
+            <ul>
+              <li><a href="/join/">Join the team</a></li>
+              <li><a href="/support/">Support SPS</a></li>
+              <li><a href={site.repositoryUrl}>GitHub <ArrowUpRight size={15} aria-hidden="true" /></a></li>
+            </ul>
+          </nav>
+        </div>
+        <div class="footer-bottom">
+          <span>Schulich Press Start</span>
+          <span>Custom hardware. Original games. Made together.</span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
+
+<script>
+  const menuButton = document.querySelector<HTMLButtonElement>('[data-menu-toggle]');
+  const menu = document.querySelector<HTMLElement>('#site-navigation');
+  const header = document.querySelector<HTMLElement>('.site-header');
+
+  if (menuButton && menu && header) {
+    const mobile = window.matchMedia('(max-width: 54rem)');
+    document.documentElement.classList.add('has-js');
+
+    const setMenuOpen = (open: boolean, restoreFocus = false) => {
+      menu.hidden = mobile.matches && !open;
+      menuButton.setAttribute('aria-expanded', String(open));
+      menuButton.setAttribute('aria-label', open ? 'Close navigation' : 'Open navigation');
+      menuButton.title = open ? 'Close navigation' : 'Open navigation';
+      if (restoreFocus) menuButton.focus();
+    };
+
+    const syncMenu = () => {
+      const focusInMenu = menu.contains(document.activeElement);
+      menuButton.hidden = !mobile.matches;
+      setMenuOpen(false, mobile.matches && focusInMenu);
+    };
+
+    syncMenu();
+    mobile.addEventListener('change', syncMenu);
+    menuButton.addEventListener('click', () => setMenuOpen(menuButton.getAttribute('aria-expanded') !== 'true'));
+    header.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && mobile.matches && !menu.hidden) setMenuOpen(false, true);
+    });
+    header.addEventListener('focusout', (event) => {
+      if (event.relatedTarget instanceof Node && !header.contains(event.relatedTarget)) setMenuOpen(false);
+    });
+    document.addEventListener('pointerdown', (event) => {
+      if (event.target instanceof Node && !header.contains(event.target)) setMenuOpen(false);
+    });
+  }
+</script>

@@ -1,0 +1,14 @@
+---
+import { ArrowLeft } from '@lucide/astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Page not found" description="This page isn't part of the Schulich Press Start website.">
+  <section class="section not-found">
+    <div class="container reading">
+      <h1>Page not found.</h1>
+      <p class="lead">That link doesn't lead to a page. The handheld and the team are back at the start.</p>
+      <div class="actions"><a class="button" href="/"><ArrowLeft size={18} aria-hidden="true" />Back to SPS</a></div>
+    </div>
+  </section>
+</BaseLayout>

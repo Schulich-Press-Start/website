@@ -1,0 +1,82 @@
+---
+import { Image } from 'astro:assets';
+import { ArrowUpRight } from '@lucide/astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import JoinBand from '../components/JoinBand.astro';
+import front from '../../design/reference/prototype1.png';
+import angle from '../../design/reference/prototype1-2.png';
+---
+
+<BaseLayout title="Handheld" description="Explore the Schulich Press Start handheld enclosure prototype, its control layout, proposed colours and hardware-dependent Zephyr software direction.">
+  <section class="page-intro">
+    <div class="container">
+      <span class="status">Prototype in development</span>
+      <h1>The SPS handheld.</h1>
+      <p class="lead">A familiar shape. A project of our own.<br />Custom hardware, an enclosure, and original games, developed together.</p>
+    </div>
+  </section>
+
+  <section class="handheld-stage" id="prototype-views" aria-label="Supplied prototype CAD views">
+    <div class="container render-gallery">
+      <figure class="cad-view">
+        <Image src={front} alt="Front CAD view of the SPS prototype with its rectangular screen, cross D-pad, four round action buttons and two pill buttons." widths={[240, 408]} sizes="(max-width: 39rem) 296px, 334px" loading="eager" fetchpriority="high" quality={90} />
+        <figcaption><span>Front view</span><a class="text-link" href={front.src}>Original render <ArrowUpRight size={15} aria-hidden="true" /><span class="sr-only">: front view</span></a></figcaption>
+      </figure>
+      <figure class="cad-view">
+        <Image src={angle} alt="Three-quarter CAD view of the grey SPS enclosure with orange controls and a ground reflection." widths={[300, 487]} sizes="(max-width: 39rem) 294px, 332px" loading="eager" quality={90} />
+        <figcaption><span>Three-quarter view</span><a class="text-link" href={angle.src}>Original render <ArrowUpRight size={15} aria-hidden="true" /><span class="sr-only">: three-quarter view</span></a></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="controls-title">
+    <div class="container split-story">
+      <h2 id="controls-title">A closer look<br />at the controls.</h2>
+      <div>
+        <dl class="feature-list">
+          <div><dt>Screen area</dt><dd>Rectangular display opening</dd></div>
+          <div><dt>Directional input</dt><dd>Cross-shaped D-pad</dd></div>
+          <div><dt>Action controls</dt><dd>Four round buttons</dd></div>
+          <div><dt>Lower controls</dt><dd>Two pill-shaped buttons</dd></div>
+        </dl>
+        <p class="feature-note">These are features visible in the supplied enclosure studies, not a final hardware specification.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section platform-band dark" id="platform" aria-labelledby="platform-title">
+    <div class="container split-story">
+      <h2 id="platform-title">Software, with<br />the hardware in mind.</h2>
+      <div>
+        <p class="lead">Zephyr is our current proposed embedded platform, subject to hardware selection.</p>
+        <p>The goal is to bring the device interfaces and original games together into a handheld experience. The final platform and capabilities depend on the hardware we select.</p>
+        <a class="text-link" href="/team/#embedded-software">Meet Embedded Software <ArrowUpRight size={17} aria-hidden="true" /></a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section concept-section" aria-labelledby="concept-title">
+    <div class="container split-story">
+      <h2 id="concept-title">A little<br />SPS character.</h2>
+      <div>
+        <p class="lead">Purple shells. Orange and bronze controls.</p>
+        <p>A colour direction we're exploring. The CAD renders show the current grey enclosure study; these swatches are proposed colours, not final manufacturing specifications.</p>
+        <ul class="colour-concepts">
+          <li><span class="colour-swatch colour-purple" aria-hidden="true"></span><span><strong>Purple shell</strong><small>Colour concept</small></span></li>
+          <li><span class="colour-swatch colour-orange" aria-hidden="true"></span><span><strong>Orange / bronze controls</strong><small>Colour concept</small></span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+  <section class="section" aria-labelledby="development-title">
+    <div class="container split-story">
+      <h2 id="development-title">Still taking shape.</h2>
+      <div>
+        <p class="lead">The handheld is a project in development.</p>
+        <p>These CAD studies are a look into that process. Electronics, enclosure design, embedded software and original games all form part of the work ahead.</p>
+        <a class="text-link" href="/journal/">Visit the build journal <ArrowUpRight size={17} aria-hidden="true" /></a>
+      </div>
+    </div>
+  </section>
+  <JoinBand />
+</BaseLayout>

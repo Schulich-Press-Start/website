@@ -1,0 +1,110 @@
+---
+import { Image } from 'astro:assets';
+import { ArrowDown, ArrowUpRight, ChevronRight, CircuitBoard, Code, Box, Gamepad2 } from '@lucide/astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Avatar from '../components/Avatar.astro';
+import JoinBand from '../components/JoinBand.astro';
+import { club, currentRoster, site } from '../data/club';
+import { getRoleLabel } from '../data/model';
+import prototype from '../assets/generated/prototype-hero.png';
+import signature from '../assets/generated/signature.png';
+import closeUp from '../../design/reference/prototype1-3.png';
+---
+
+<BaseLayout title={site.name}>
+  <section class="home-hero dark" aria-labelledby="hero-title">
+    <div class="container hero-inner">
+      <div class="hero-copy">
+        <span class="status">Handheld in development</span>
+        <h1 id="hero-title">Schulich<br />Press Start.</h1>
+        <p class="hero-description">A student-built way to play. Custom handhelds, original games, and the people making them happen.</p>
+        <div class="actions">
+          <a class="button button-light" href="/handheld/">Meet the handheld <ChevronRight size={18} aria-hidden="true" /></a>
+          <a class="text-link" href="/join/">Join the team <ArrowUpRight size={17} aria-hidden="true" /></a>
+        </div>
+      </div>
+      <Image class="hero-watermark" src={signature} alt="" width={320} loading="eager" aria-hidden="true" />
+      <figure class="hero-product">
+        <Image src={prototype} alt="SPS handheld CAD prototype in a grey enclosure, with a rectangular screen, cross-shaped D-pad, four round action buttons and two lower pill-shaped buttons." width={260} widths={[200, 260]} sizes="(max-width: 39rem) 145px, (max-width: 54rem) 230px, 308px" loading="eager" fetchpriority="high" decoding="sync" quality={90} />
+        <figcaption>Enclosure prototype / CAD render</figcaption>
+      </figure>
+    </div>
+    <div class="hero-footer">
+      <div class="container">
+        <span>An engineering design club at the University of Calgary</span>
+        <span>Built together, from the inside out <ArrowDown size={16} aria-hidden="true" /></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="intro-title">
+    <div class="container intro-grid">
+      <h2 id="intro-title">Small handheld.<br />Whole world of engineering.</h2>
+      <div>
+        <p class="lead">We love playing games. We also want to build what plays them.</p>
+        <p>Schulich Press Start brings different disciplines together to develop a custom gaming handheld, from the electronics inside to the enclosure in your hands and the games on screen.</p>
+        <a class="text-link" href="/handheld/">Explore the prototype <ArrowUpRight size={17} aria-hidden="true" /></a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section engineering-section" aria-labelledby="engineering-title">
+    <div class="container engineering-grid">
+      <figure class="engineering-photo">
+        <Image src={closeUp} alt="Close-up of the supplied CAD model showing the D-pad, four circular action buttons and two lower pill controls." widths={[400, 640, 851]} sizes="(max-width: 39rem) calc(100vw - 40px), (max-width: 70rem) 45vw, 560px" quality={85} />
+        <figcaption>A closer look at the enclosure study. Colours are concepts, not final specifications.</figcaption>
+      </figure>
+      <div class="engineering-copy">
+        <h2 id="engineering-title">Every part is<br />a team effort.</h2>
+        <p>A handheld is where a lot of different ideas have to work together. That's the part we're here for.</p>
+        <ul class="discipline-list">
+          <li><CircuitBoard size={19} aria-hidden="true" /><div><strong>Electronics</strong><p>The circuits and components at the heart of the build.</p></div></li>
+          <li><Code size={19} aria-hidden="true" /><div><strong>Embedded software</strong><p>Bringing the hardware and game experience together.</p></div></li>
+          <li><Box size={19} aria-hidden="true" /><div><strong>Mechanical design</strong><p>Turning a control layout into something you can hold.</p></div></li>
+          <li><Gamepad2 size={19} aria-hidden="true" /><div><strong>Original games</strong><p>Making the experiences that give the hardware a purpose.</p></div></li>
+        </ul>
+        <a class="text-link" href="/journal/">Follow the build <ArrowUpRight size={17} aria-hidden="true" /></a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section game-section" aria-labelledby="games-title">
+    <div class="container game-grid">
+      <div class="game-copy">
+        <h2 id="games-title">Not just a console.<br />Something to play.</h2>
+        <p class="lead">Original games are part of the project, too.</p>
+        <p>Our Game Design division develops the ideas and experiences that will live on the handheld, alongside the people building its hardware and software.</p>
+        <a class="text-link" href="/join/#game-design">Meet your next creative project <ArrowUpRight size={17} aria-hidden="true" /></a>
+      </div>
+      <figure class="game-placeholder">
+        <Image src={signature} alt="" width={72} aria-hidden="true" />
+        <p>Original games</p>
+        <span>Artwork in development</span>
+        <figcaption>Development placeholder, not gameplay.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="team-preview-title">
+    <div class="container">
+      <div class="section-heading">
+        <h2 id="team-preview-title">Meet the people<br />behind the buttons.</h2>
+        <a class="text-link" href="/team/">The SPS team <ArrowUpRight size={17} aria-hidden="true" /></a>
+      </div>
+      <div class="team-preview">
+        {club.memberships.filter((membership) => membership.rosterId === currentRoster.id).map((membership) => {
+          const member = club.members.find((person) => person.id === membership.memberId)!;
+          const division = club.divisions.find((team) => team.id === membership.divisionId);
+          return (
+            <a class="preview-person" href={`/team/#member-${member.id}-${membership.divisionId ?? 'presidency'}`}>
+              <Avatar member={member} />
+              <h3>{member.name}</h3>
+              <p>{getRoleLabel(membership, division)}{member.coFounder && <><br />Co-Founder</>}</p>
+            </a>
+          );
+        })}
+      </div>
+    </div>
+  </section>
+  <JoinBand />
+</BaseLayout>

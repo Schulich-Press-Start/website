@@ -1,0 +1,43 @@
+---
+import { ArrowUpRight } from '@lucide/astro';
+import MemberCard from './MemberCard.astro';
+import { club, currentRoster } from '../data/club';
+import { getRosterEntries } from '../data/model';
+
+interface Props { rosterId?: string; }
+const { rosterId = currentRoster.id } = Astro.props;
+const isCurrent = rosterId === currentRoster.id;
+---
+
+<div class="roster-layout">
+  <nav class="division-nav" aria-label="Team divisions">
+    <p>Find your people</p>
+    <ul>
+      <li><a href="#presidency">President</a></li>
+      {club.divisions.map((division) => <li><a href={`#${division.id}`}>{division.name}</a></li>)}
+    </ul>
+  </nav>
+  <div>
+    <section class="roster-group presidency" id="presidency" aria-labelledby="presidency-title">
+      <h2 id="presidency-title">President</h2>
+      {getRosterEntries(club, rosterId, null).map(({ member, membership }) => <MemberCard member={member} membership={membership} />)}
+    </section>
+    <div class="division-grid">
+      {club.divisions.map((division) => {
+        const entries = getRosterEntries(club, rosterId, division.id);
+        return (
+          <section class="roster-group" id={division.id} aria-labelledby={`${division.id}-title`}>
+            <h2 id={`${division.id}-title`}>{division.name}</h2>
+            {entries.map(({ member, membership }) => <MemberCard member={member} membership={membership} division={division} />)}
+            {entries.length === 0 && (
+              <div class="open-division">
+                <p>{division.description}</p>
+                {isCurrent ? <a class="text-link" href={`/join/#${division.id}`}>Help shape this team <ArrowUpRight size={16} aria-hidden="true" /></a> : <p>No members recorded for this division.</p>}
+              </div>
+            )}
+          </section>
+        );
+      })}
+    </div>
+  </div>
+</div>

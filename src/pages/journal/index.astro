@@ -1,0 +1,48 @@
+---
+import { Image } from 'astro:assets';
+import { ArrowUpRight } from '@lucide/astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { club } from '../../data/club';
+import { getPublishedEntries } from '../../data/model';
+import prototype from '../../assets/generated/prototype-front.png';
+
+const entries = getPublishedEntries(club.journal);
+const formatDate = (date: string) => new Intl.DateTimeFormat('en-CA', { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${date}T00:00:00Z`));
+---
+
+<BaseLayout title="Journal" description="The Schulich Press Start build journal: design decisions, experiments and progress from our handheld project.">
+  <section class="page-intro journal-intro">
+    <div class="container">
+      <h1>The build journal.</h1>
+      <p class="lead">The questions, experiments and decisions behind a student-built handheld.</p>
+    </div>
+  </section>
+  <section class="section" aria-label="Published build logs">
+    <div class="container">
+      {entries.length ? (
+        <ul class="journal-list">
+          {entries.map((entry) => (
+            <li>
+              <time class="small muted" datetime={entry.publishedAt}>{formatDate(entry.publishedAt!)}</time>
+              <h2><a href={`/journal/${entry.slug}/`}>{entry.title}</a></h2>
+              <p>{entry.summary}</p>
+              <a class="text-link" href={`/journal/${entry.slug}/`}>Read the build log <ArrowUpRight size={17} aria-hidden="true" /><span class="sr-only">: {entry.title}</span></a>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div class="journal-empty">
+          <div>
+            <h2>The first entry<br />is still to come.</h2>
+            <p>No build logs have been published yet. In the meantime, there's an enclosure prototype to explore and a team to meet.</p>
+            <a class="text-link" href="/handheld/">See the current prototype <ArrowUpRight size={17} aria-hidden="true" /></a>
+          </div>
+          <figure class="journal-object">
+            <Image src={prototype} alt="Front view of the SPS enclosure CAD study." width={280} widths={[200, 280]} sizes="256px" loading="eager" />
+            <figcaption>The enclosure study, not a published build log.</figcaption>
+          </figure>
+        </div>
+      )}
+    </div>
+  </section>
+</BaseLayout>

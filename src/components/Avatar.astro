@@ -1,0 +1,25 @@
+---
+import { Image } from 'astro:assets';
+import { getInitials, type Member } from '../data/model';
+
+interface Props { member: Member; }
+const { member } = Astro.props;
+const tones: Record<string, string> = {
+  'abdul-waase-qureshi': 'purple',
+  'jonart-bajraktari': 'orange',
+  'yassin-soliman': 'silver',
+  'mujtaba-zia': 'yellow',
+  'saifullah-asad': 'deep',
+};
+---
+
+<div class:list={['portrait', `portrait-${tones[member.id] ?? 'purple'}`]}>
+  {member.avatar ? (
+    <Image src={member.avatar.src} alt={member.avatar.alt} width={member.avatar.width} height={member.avatar.height} loading="lazy" />
+  ) : (
+    <>
+      <span class="portrait-initials" aria-hidden="true">{getInitials(member.name)}</span>
+      <span class="portrait-caption">Portrait pending</span>
+    </>
+  )}
+</div>

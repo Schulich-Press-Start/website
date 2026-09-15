@@ -1,0 +1,36 @@
+---
+import { ArrowLeft } from '@lucide/astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { club } from '../../data/club';
+import { getPublishedEntries, type JournalEntry } from '../../data/model';
+
+export function getStaticPaths() {
+  return getPublishedEntries(club.journal).map((entry) => ({ params: { slug: entry.slug }, props: { entry } }));
+}
+
+interface Props { entry: JournalEntry; }
+const { entry } = Astro.props;
+const authors = club.members.filter((member) => entry.authorIds.includes(member.id));
+const date = new Intl.DateTimeFormat('en-CA', { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${entry.publishedAt}T00:00:00Z`));
+---
+
+<BaseLayout title={entry.title} description={entry.summary}>
+  <div class="container section">
+    <article class="reading">
+      <header class="article-header">
+        <a class="text-link" href="/journal/"><ArrowLeft size={17} aria-hidden="true" />All build logs</a>
+        <h1>{entry.title}</h1>
+        <p class="lead">{entry.summary}</p>
+        <div class="entry-meta">
+          <time datetime={entry.publishedAt}>{date}</time>
+          <span>{authors.map((author) => author.name).join(', ')}</span>
+        </div>
+      </header>
+      {entry.sections.map((section) => <section class="article-section"><h2>{section.heading}</h2>{section.paragraphs.map((paragraph) => <p>{paragraph}</p>)}</section>)}
+      <section class="article-sources" aria-labelledby="sources-title">
+        <h2 id="sources-title">Sources</h2>
+        <ul>{entry.sources.map((source) => <li>{source}</li>)}</ul>
+      </section>
+    </article>
+  </div>
+</BaseLayout>

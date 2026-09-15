@@ -1,0 +1,15 @@
+---
+import { ArrowUpRight, Mail } from '@lucide/astro';
+import { president, site } from '../data/club';
+
+interface Props { appearance?: 'button' | 'text-link'; }
+const { appearance = 'button' } = Astro.props;
+const email = site.publicContact?.email;
+const href = email ? `mailto:${email}` : site.publicContact?.url ?? president.linkedin;
+const label = email ?? (site.publicContact?.url ? 'Contact SPS' : 'Connect with our president');
+---
+
+<a class={appearance} href={href} data-contact-link>
+  {label}
+  {email ? <Mail size={18} aria-hidden="true" /> : <ArrowUpRight size={18} aria-hidden="true" />}
+</a>

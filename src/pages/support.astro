@@ -1,0 +1,41 @@
+---
+import { ArrowUpRight } from '@lucide/astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ContactLink from '../components/ContactLink.astro';
+import { president, site } from '../data/club';
+---
+
+<BaseLayout title="Support" description="Support Schulich Press Start's student-built gaming handheld through parts, tools, technical guidance or project funding.">
+  <section class="page-intro">
+    <div class="container">
+      <div class="support-intro">
+        <h1>Support SPS.</h1>
+        <p class="lead">Help turn student ideas into something you can hold. And play.</p>
+        <p>We're bringing electronics, enclosure design, embedded software and original games together at the University of Calgary. A useful partnership can help move that work forward.</p>
+        <a class="text-link" href="#contact">Start a conversation <ArrowUpRight size={17} aria-hidden="true" /></a>
+      </div>
+    </div>
+  </section>
+  <section class="section team-section" aria-labelledby="support-ways-title">
+    <div class="container">
+      <div class="section-heading"><h2 id="support-ways-title">More than one<br />way to help.</h2></div>
+      <div class="support-ways">
+        <section class="support-way"><h3>Parts and equipment</h3><p>Components, test equipment, fabrication access or prototyping tools. Let's talk about where your resources could be useful to the project.</p></section>
+        <section class="support-way"><h3>Technical guidance</h3><p>Share experience in electronics, firmware, mechanical design or game development. A design review or a fresh perspective can make a difference.</p></section>
+        <section class="support-way"><h3>Project funding</h3><p>Discuss support for the practical costs of developing and prototyping a custom handheld. The team can help identify an appropriate contribution.</p></section>
+      </div>
+    </div>
+  </section>
+  <section class="section support-contact" id="contact" aria-labelledby="contact-title">
+    <div class="container split-story">
+      <h2 id="contact-title">Let's make<br />something happen.</h2>
+      <div>
+        <p class="lead">Interested in supporting the build?</p>
+        <p>Tell us a little about your organisation and the kind of support you have in mind.</p>
+        <div class="actions"><ContactLink /></div>
+        {!site.publicContact && <p class="contact-note">Sponsorship enquiries: connect with {president.name}, President and Co-Founder, through LinkedIn.</p>}
+        {site.sponsorProspectusUrl && <a class="text-link" href={site.sponsorProspectusUrl}>Sponsorship information <ArrowUpRight size={17} aria-hidden="true" /></a>}
+      </div>
+    </div>
+  </section>
+</BaseLayout>
