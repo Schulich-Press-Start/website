@@ -85,6 +85,8 @@ const localReview = import.meta.env.DEV && process.env.SPS_REVIEW === '1';
               <li><a href="/join/">Join the team</a></li>
               <li><a href="/support/">Support SPS</a></li>
               <li><a href={site.repositoryUrl}>GitHub <ArrowUpRight size={15} aria-hidden="true" /></a></li>
+              {site.instagramUrl && <li><a href={site.instagramUrl}>Instagram <ArrowUpRight size={15} aria-hidden="true" /></a></li>}
+              {site.linktreeUrl && <li><a href={site.linktreeUrl}>Linktree <ArrowUpRight size={15} aria-hidden="true" /></a></li>}
             </ul>
           </nav>
         </div>
@@ -92,7 +94,7 @@ const localReview = import.meta.env.DEV && process.env.SPS_REVIEW === '1';
           <span>Schulich Press Start</span>
           <span>Custom hardware. Original games. Made together.</span>
         </div>
-        {localReview && <p class="review-notice">Local concept review. Portraits await member approval. <a href="/__sps-review/font-license.txt">Utendo by LyonsType / CC BY-NC-SA 4.0</a></p>}
+        {localReview && <p class="review-notice">Local font review. <a href="/__sps-review/font-license.txt">Utendo by LyonsType / CC BY-NC-SA 4.0</a></p>}
       </div>
     </footer>
   </body>

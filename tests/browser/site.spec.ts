@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { readFileSync } from 'node:fs';
+import { club, site } from '../../src/data/club.ts';
 
 const routes = [
   { path: '/', title: 'Schulich Press Start' },
@@ -32,6 +33,40 @@ async function loadImages(page: Page) {
     })).toBe(true);
   }
   await page.evaluate(() => window.scrollTo(0, 0));
+}
+
+async function expectApplicationButtons(page: Page) {
+  let applicationRequests = 0;
+  await page.route(site.applicationUrl!, (route) => {
+    applicationRequests++;
+    return route.fulfill({
+      contentType: 'text/html',
+      body: '<!doctype html><html lang="en"><title>Application destination</title><h1>Application destination</h1></html>',
+    });
+  });
+  for (const index of [0, 1]) {
+    await visit(page, '/join/');
+    await loadImages(page);
+    await expect(page).toHaveURL('/join/');
+    await expect(page.locator('meta[http-equiv="refresh" i]')).toHaveCount(0);
+    await expect(page.locator('.division-description')).toHaveCount(club.divisions.length);
+    await expect(page.locator('[data-application-status]')).toHaveText('Recruiting now');
+    const applications = page.getByRole('link', { name: 'Apply to SPS', exact: true });
+    await expect(applications).toHaveCount(2);
+    const application = applications.nth(index);
+    await expect(application).toHaveAttribute('href', site.applicationUrl!);
+    await expect(application).not.toHaveAttribute('href', /\/edit/);
+    expect(applicationRequests).toBe(index);
+    if (index === 0) {
+      await application.focus();
+      await page.keyboard.press('Enter');
+    } else {
+      await application.click();
+    }
+    await expect(page).toHaveURL(site.applicationUrl!);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Application destination');
+    expect(applicationRequests).toBe(index + 1);
+  }
 }
 
 test.beforeEach(async ({ page, baseURL }) => {
@@ -70,6 +105,9 @@ for (const route of routes) {
     expect(layout.imageProblems).toEqual([]);
     expect(runtimeErrors).toEqual([]);
     expect(thirdPartyRequests).toEqual([]);
+    const footer = page.getByRole('contentinfo');
+    await expect(footer.getByRole('link', { name: 'Instagram', exact: true })).toHaveAttribute('href', site.instagramUrl!);
+    await expect(footer.getByRole('link', { name: 'Linktree', exact: true })).toHaveAttribute('href', site.linktreeUrl!);
 
     if (route.path === '/') {
       await expect(page.locator('.hero-product img')).toHaveAttribute('loading', 'eager');
@@ -86,6 +124,14 @@ for (const route of routes) {
     await testInfo.attach('rendered-page', { body: await page.screenshot({ fullPage: true, animations: 'disabled' }), contentType: 'image/png' });
   });
 }
+
+test('Join stays on site until an application button is activated', async ({ page, request }) => {
+  const response = await request.get('/join/', { maxRedirects: 0 });
+  expect(response.status()).toBe(200);
+  expect(response.headers().location).toBeUndefined();
+  expect(response.headers().refresh).toBeUndefined();
+  await expectApplicationButtons(page);
+});
 
 test('native navigation and mobile menu support keyboard and touch', async ({ page, isMobile, hasTouch, browserName }) => {
   await visit(page, '/');
@@ -149,6 +195,67 @@ test('member selection has native disclosure, deep links and focus restoration',
   expect(scan.violations).toEqual([]);
 });
 
+test('approved headshots render publicly with consistent square framing', async ({ page, request }) => {
+  for (const path of ['/', '/team/']) {
+    await visit(page, path);
+    const portraits = page.locator('.portrait-character > img');
+    await expect(portraits).toHaveCount(5);
+    await expect(page.locator('.portrait-caption, .portrait-initials')).toHaveCount(0);
+    await expect(page.locator('.portrait-film')).toHaveCount(0);
+    await loadImages(page);
+    for (const member of club.members) {
+      const avatar = member.avatar!;
+      const dimensions = avatar.crop ?? avatar;
+      const image = page.getByAltText(avatar.alt, { exact: true });
+      await expect(image).toHaveAttribute('src', /^\/_astro\//);
+      await expect(image).toHaveAttribute('srcset', /120w.*160w.*240w.*320w/);
+      await expect(image).toHaveAttribute('width', String(dimensions.width));
+      await expect(image).toHaveAttribute('height', String(dimensions.height));
+      const layout = await image.evaluate((element) => {
+        const image = element as HTMLImageElement;
+        const frame = image.parentElement!.getBoundingClientRect();
+        const bounds = image.getBoundingClientRect();
+        return {
+          loaded: image.complete && image.naturalWidth > 0,
+          fit: getComputedStyle(image).objectFit,
+          inside: bounds.top >= frame.top - 1 && bounds.bottom <= frame.bottom + 1 && bounds.left >= frame.left - 1 && bounds.right <= frame.right + 1,
+        };
+      });
+      expect(layout).toEqual({ loaded: true, fit: 'contain', inside: true });
+    }
+  }
+  const software = page.locator('#member-yassin-soliman-embedded-software');
+  await software.locator('summary').click();
+  await expect(software.getByAltText('Mii-style portrait of Yassin Soliman.')).toBeVisible();
+  await expect(page.getByText('Portrait: AI-generated, member-approved.')).toHaveCount(0);
+  const publicImage = await request.get('/images/team/saifullah-asad-front-headshot-ai.webp');
+  expect(publicImage.status()).toBe(200);
+  expect(publicImage.headers()['content-type']).toContain('image/webp');
+});
+
+test('headshot divisions wrap a larger roster without oversized tiles', async ({ page }) => {
+  await visit(page, '/team/');
+  await page.locator('#embedded-software .member-grid').evaluate((grid) => {
+    const source = grid.firstElementChild!;
+    for (let index = 0; index < 19; index++) {
+      const item = source.cloneNode(true) as HTMLElement;
+      item.removeAttribute('id');
+      item.removeAttribute('name');
+      item.querySelector('.member-name')!.textContent = `Layout fixture ${index + 1}`;
+      grid.append(item);
+    }
+  });
+  const portraits = page.locator('#embedded-software .portrait');
+  await expect(portraits).toHaveCount(20);
+  const bounds = await portraits.evaluateAll((elements) => elements.map((element) => {
+    const rect = element.getBoundingClientRect();
+    return { width: rect.width, height: rect.height, top: rect.top };
+  }));
+  expect(bounds.every((rect) => rect.width <= 200 && Math.abs(rect.width - rect.height) < 1)).toBe(true);
+  expect(new Set(bounds.map((rect) => rect.top)).size).toBeGreaterThan(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
 test('reduced motion disables interaction animation without hiding content', async ({ page }) => {
   await visit(page, '/team/');
   const summary = page.locator('#member-yassin-soliman-embedded-software summary');
@@ -162,17 +269,44 @@ test('reduced motion disables interaction animation without hiding content', asy
   await expect(page.getByRole('link', { name: 'Yassin Soliman on LinkedIn' })).toBeVisible();
 });
 
+test('club copy separates prototypes, future plans and pending approvals', async ({ page }) => {
+  await visit(page, '/handheld/');
+  const development = page.locator('section[aria-labelledby="development-title"]');
+  await expect(development).toContainText('two working prototypes');
+  for (const game of ['Pong', 'Tomb of the Mask', 'Brick Breaker']) await expect(development).toContainText(game);
+  await expect(development).toContainText('separate from the original games');
+  await expect(development).toContainText('Game Boy-inspired');
+  await expect(development).toContainText('goal is to complete that handheld by June');
+  const collaboration = page.locator('section[aria-labelledby="collaboration-title"]');
+  await expect(collaboration).toContainText('Schulich on a Chip');
+  await expect(collaboration).toContainText('2027-2028 academic year');
+  await expect(collaboration).toContainText('future integration plan');
+  await expect(page.locator('main')).not.toContainText('Applications close September 25');
+  await visit(page, '/');
+  await expect(page.locator('.home-introduction')).toContainText('Two working prototypes');
+  await expect(page.locator('.home-introduction')).toContainText('goal');
+  await expect(page.locator('.home-introduction')).toContainText('by June');
+  await expect(page.locator('.home-games')).toContainText('demos of Pong, Tomb of the Mask and Brick Breaker');
+  await visit(page, '/support/');
+  const approval = page.locator('section[aria-labelledby="approval-title"]');
+  await expect(approval).toContainText('School approval pending');
+  await expect(approval).toContainText('completing the club constitution and confirming a faculty advisor');
+  await expect(approval).toContainText('Schulich Student Activities Fund (SSAF)');
+  await expect(approval).toContainText('planned funding application, not an award');
+  await expect(page.locator('[data-contact-link]')).toHaveAttribute('href', 'mailto:schulichpressstart@gmail.com');
+  await expect(page.locator('[data-contact-link]')).toHaveText('Email SPS');
+  await expect(page.locator('[data-contact-link]')).toHaveAccessibleName('Email SPS at schulichpressstart@gmail.com');
+  await page.setViewportSize({ width: 320, height: 568 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
 test('missing content produces honest, usable destinations', async ({ page }) => {
   await visit(page, '/journal/');
   await expect(page.locator('.journal-list li')).toHaveCount(0);
   await expect(page.getByText('No build logs have been published yet.', { exact: false })).toBeVisible();
-  await visit(page, '/join/');
-  await expect(page.locator('[data-application-status]')).toHaveText('Recruiting now');
-  await expect(page.locator('[data-application-link]')).toHaveCount(0);
-  await expect(page.locator('[data-contact-link]')).toHaveAttribute('href', 'https://www.linkedin.com/in/abdulwq/');
   await visit(page, '/support/');
-  await expect(page.locator('[data-contact-link]')).toHaveAttribute('href', 'https://www.linkedin.com/in/abdulwq/');
-  await expect(page.locator('form, a[href^="mailto:"]')).toHaveCount(0);
+  await expect(page.locator('[data-contact-link]')).toHaveAttribute('href', 'mailto:schulichpressstart@gmail.com');
+  await expect(page.locator('form')).toHaveCount(0);
   const missing = await page.goto('/this-page-does-not-exist/');
   expect(missing?.status()).toBe(404);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Page not found.');
@@ -217,6 +351,25 @@ test('compact and wide layouts preserve the first-viewport product story', async
   }
 });
 
+test('homepage engineering topics support keyboard and native disclosure', async ({ page, browserName }) => {
+  await visit(page, '/');
+  const topics = page.locator('.workbench-topics details');
+  await expect(topics).toHaveCount(4);
+  for (const topic of await topics.all()) {
+    const summary = topic.locator('summary');
+    await summary.focus();
+    if (await topic.getAttribute('open') === null) await page.keyboard.press('Enter');
+    await expect(topic).toHaveAttribute('open', '');
+    await expect(page.locator('.workbench-topics details[open]')).toHaveCount(1);
+    await page.keyboard.press(tabKeyFor(browserName));
+    await expect(topic.getByRole('link')).toBeFocused();
+    await expect(topic.getByRole('link')).toHaveAttribute('href', /^\/team\/#/);
+    await summary.focus();
+    await page.keyboard.press('Space');
+    await expect(topic).not.toHaveAttribute('open', '');
+  }
+});
+
 test.describe('without client JavaScript', () => {
   test.use({ javaScriptEnabled: false });
 
@@ -226,9 +379,23 @@ test.describe('without client JavaScript', () => {
       await expect(page.locator('#site-navigation')).toBeVisible();
       await expect(page.locator('[data-menu-toggle]')).toBeHidden();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      if (route.path === '/') {
+        await expect(page.locator('[data-viewer-load]')).toBeHidden();
+        const topic = page.locator('.workbench-topics details').filter({ hasText: 'Embedded software' });
+        await topic.locator('summary').focus();
+        await page.keyboard.press('Enter');
+        await expect(topic).toHaveAttribute('open', '');
+        await expect(topic).toContainText('Zephyr is the proposed platform, subject to hardware selection.');
+        await page.keyboard.press(tabKeyFor(browserName));
+        await expect(topic.getByRole('link')).toBeFocused();
+      }
     }
+    await expectApplicationButtons(page);
     await visit(page, '/team/');
     await expect(page.locator('[data-member]')).toHaveCount(5);
+    await expect(page.locator('.portrait-character > img')).toHaveCount(5);
+    await expect(page.locator('.portrait-caption, .portrait-initials')).toHaveCount(0);
+    await loadImages(page);
     const software = page.locator('#member-yassin-soliman-embedded-software');
     await software.locator('summary').focus();
     await page.keyboard.press('Enter');
@@ -250,6 +417,8 @@ test('3D is on demand, framed, interactive and keyboard accessible', async ({ pa
   expect(modelRequests).toEqual([]);
   const viewer = page.locator('[data-handheld-viewer]');
   const load = viewer.getByRole('button', { name: 'Explore in 3D' });
+  await expect(load).toHaveText('Press start');
+  await expect(load).toHaveAccessibleName('Press start: Explore in 3D');
   const posterSceneBox = await viewer.locator('.viewer-scene').boundingBox();
   const loadBox = await load.boundingBox();
   expect(loadBox!.y).toBeGreaterThanOrEqual(posterSceneBox!.y + posterSceneBox!.height - 1);
@@ -315,6 +484,7 @@ test('3D is on demand, framed, interactive and keyboard accessible', async ({ pa
   await page.keyboard.press('Escape');
   await expect(canvas).toBeHidden();
   await expect(load).toBeFocused();
+  await expect(load).toHaveAccessibleName('Press start: Explore in 3D');
   await expect(viewer.locator('.viewer-poster')).toBeVisible();
   expect(runtimeErrors).toEqual([]);
 });
@@ -337,6 +507,105 @@ test('production never exposes private review assets', async ({ page, request },
   }
   const response = await request.get('/__sps-review/portraits/abdul-waase-qureshi.webp');
   expect(response.status()).toBe(404);
+  for (const path of [
+    '/__sps-review/portraits/abdul-waase-qureshi-ai.webp',
+    '/.local/portrait-approvals.md',
+    '/.local/review/portraits/generation/generation-log.json',
+    '/.local/club-documents/Schulich%20Press%20Start%20Constitution%2026-27.docx',
+    '/.local/club-documents/SPS%20Info%20Night%202026-2027.pptx',
+  ]) {
+    expect((await request.get(path)).status()).toBe(404);
+  }
+});
+
+test('shell colour picker updates the front and solid back while preserving source materials', async ({ page }, testInfo) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  for (const route of ['/', '/handheld/']) {
+    await visit(page, route);
+    const viewer = page.locator('[data-handheld-viewer]');
+    const load = viewer.getByRole('button', { name: 'Explore in 3D' });
+    await load.click();
+    await expect(viewer).toHaveAttribute('data-ready', 'true', { timeout: 15_000 });
+    const canvas = viewer.locator('canvas');
+    const picker = viewer.getByLabel('Shell colour', { exact: true });
+    const capture = () => canvas.evaluate((element) => (element as HTMLCanvasElement).toDataURL());
+    const chooseColour = async (value: string) => {
+      await picker.evaluate((element, colour) => {
+        const input = element as HTMLInputElement;
+        input.value = colour;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }, value);
+      await expect(picker).toHaveValue(value);
+      await expect(viewer).toHaveAttribute('data-inspection', 'false');
+      await expect(viewer.getByRole('button', { name: 'Inspect CAD edges' })).toHaveAttribute('aria-pressed', 'false');
+    };
+    const rearPixels = () => canvas.evaluate((element) => {
+      const canvas = element as HTMLCanvasElement;
+      const context = canvas.getContext('webgl2')!;
+      const samples: number[][] = [];
+      for (const horizontal of [0.48, 0.52]) for (const vertical of [0.40, 0.52, 0.62]) {
+        const rgba = new Uint8Array(4);
+        context.readPixels(Math.floor(canvas.width * horizontal), Math.floor(canvas.height * vertical), 1, 1, context.RGBA, context.UNSIGNED_BYTE, rgba);
+        samples.push(Array.from(rgba));
+      }
+      return samples;
+    });
+    await expect(picker).toHaveAttribute('type', 'color');
+    await expect(picker).toHaveValue('#7543b9');
+    await picker.focus();
+    await expect(picker).toBeFocused();
+    const pickerBox = await picker.boundingBox();
+    expect(pickerBox!.width).toBeGreaterThanOrEqual(44);
+    expect(pickerBox!.height).toBeGreaterThanOrEqual(44);
+    const purpleFront = await capture();
+    await chooseColour('#ef2439');
+    expect(await capture()).not.toBe(purpleFront);
+    await expect(picker).toHaveAttribute('data-selected', 'true');
+    for (let turn = 0; turn < 9; turn++) await viewer.getByRole('button', { name: 'Rotate model right', exact: true }).click();
+    for (const [red, green, blue, alpha] of await rearPixels()) {
+      expect(alpha).toBe(255);
+      expect(red).toBeGreaterThan(green + 40);
+      expect(red).toBeGreaterThan(blue + 40);
+    }
+    const source = viewer.getByRole('button', { name: 'Source CAD materials' });
+    await source.click();
+    const originalBack = await capture();
+    await chooseColour('#22cc88');
+    await expect(source).toHaveAttribute('aria-pressed', 'false');
+    for (const [red, green, blue, alpha] of await rearPixels()) {
+      expect(alpha).toBe(255);
+      expect(green).toBeGreaterThan(red + 30);
+      expect(green).toBeGreaterThan(blue + 15);
+    }
+    await source.click();
+    expect(await capture()).toBe(originalBack);
+    await viewer.getByRole('button', { name: 'Purple and orange colour concept' }).click();
+    await expect(picker).toHaveValue('#7543b9');
+    for (const [red, green, blue, alpha] of await rearPixels()) {
+      expect(alpha).toBe(255);
+      expect(red).toBeGreaterThan(green + 10);
+      expect(blue).toBeGreaterThan(red + 10);
+    }
+    await viewer.getByRole('button', { name: 'Inspect CAD edges' }).click();
+    await chooseColour('#ffffff');
+    const whiteBack = await capture();
+    await chooseColour('#000000');
+    expect(await capture()).not.toBe(whiteBack);
+    await chooseColour('#22cc88');
+    await viewer.getByRole('button', { name: 'Close 3D view' }).click();
+    await load.click();
+    await expect(viewer).toHaveAttribute('data-ready', 'true', { timeout: 15_000 });
+    await expect(picker).toHaveValue('#22cc88');
+    await expect(picker).toHaveAttribute('data-selected', 'true');
+    for (let turn = 0; turn < 9; turn++) await viewer.getByRole('button', { name: 'Rotate model right', exact: true }).click();
+    for (const [red, green, blue, alpha] of await rearPixels()) {
+      expect(alpha).toBe(255);
+      expect(green).toBeGreaterThan(red + 30);
+      expect(green).toBeGreaterThan(blue + 15);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await testInfo.attach(route === '/' ? 'home-custom-shell' : 'handheld-custom-shell', { body: await viewer.screenshot(), contentType: 'image/png' });
+  }
 });
 
 test('product tour, camera presets, screen and CAD inspection respond to input', async ({ page }) => {

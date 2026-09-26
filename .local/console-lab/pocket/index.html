@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en-CA">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Pocket OS / SPS Console Lab</title>
+    <link rel="stylesheet" href="/common.css" />
+    <link rel="stylesheet" href="/pocket/style.css" />
+  </head>
+  <body data-theme="pocket">
+    <noscript>
+      <style>#boot,#shell{display:none!important}</style>
+      <main class="native-fallback">
+        <img src="/media/logo-dark.png" alt="Schulich Press Start" width="190" />
+        <h1>Schulich Press Start</h1>
+        <p>A University of Calgary team developing handheld electronics, enclosures, embedded firmware and original games.</p>
+        <p>Two working prototypes. A Game Boy-inspired handheld is next.</p>
+        <a href="https://schulich-press-start-classic.vercel.app/">Open the original website</a>
+        <a href="https://schulich-press-start-classic.vercel.app/join/">Join the team</a>
+        <a href="/">All concepts</a>
+      </main>
+    </noscript>
+    <section id="boot" class="boot" aria-label="Pocket OS startup"></section>
+    <main id="shell" class="pocket-system" inert>
+      <header class="pocket-header">
+        <a class="pocket-brand" href="/"><img src="/media/logo-dark.png" alt="SPS" width="118" /><span>Pocket OS</span></a>
+        <div id="system-tools" class="system-tools"></div>
+      </header>
+      <section class="pocket-playfield" aria-labelledby="pocket-title">
+        <div class="pocket-heading"><h1 id="pocket-title">Schulich Press Start</h1><p>University of Calgary</p></div>
+        <div class="pocket-scene">
+          <canvas id="stage" aria-label="SPS handheld controls" aria-describedby="screen-status" tabindex="0"></canvas>
+          <img id="stage-fallback" src="/media/handheld.webp" alt="Purple SPS handheld with orange controls and two black lower buttons" />
+        </div>
+        <div class="pocket-model-tools"><div class="pocket-finishes" role="group" aria-label="Shell colour concepts">
+          <button type="button" data-colour="#784ac3" aria-label="Purple shell" aria-pressed="true" title="Purple shell" style="--swatch:#784ac3"></button>
+          <button type="button" data-colour="#dbded9" aria-label="Porcelain shell" aria-pressed="false" title="Porcelain shell" style="--swatch:#dbded9"></button>
+          <button type="button" data-colour="#ed7970" aria-label="Coral shell" aria-pressed="false" title="Coral shell" style="--swatch:#ed7970"></button>
+          <button type="button" data-colour="#67a899" aria-label="Mint shell" aria-pressed="false" title="Mint shell" style="--swatch:#67a899"></button>
+        </div>
+        <div class="pocket-view-tools">
+          <button class="icon-button" type="button" data-pocket-action="scan" aria-label="Show CAD surface" title="Show CAD surface" aria-pressed="false"></button>
+          <button class="icon-button" type="button" data-pocket-action="frame" aria-label="Focus on the screen" title="Focus on the screen" aria-pressed="false"></button>
+          <button class="icon-button" type="button" data-pocket-action="rotate" aria-label="Turn the handheld around" title="Turn the handheld around"></button>
+        </div></div>
+      </section>
+      <section class="pocket-dock" aria-label="Handheld navigation">
+        <nav class="pocket-programs" aria-label="Programs"></nav>
+        <div class="pocket-remote">
+          <button class="icon-button" type="button" data-pocket-action="home" aria-label="Home menu" title="Home menu"></button>
+          <button class="icon-button" type="button" data-pocket-action="previous" aria-label="Previous item" title="Previous item"></button>
+          <div class="pocket-selection"><span id="screen-status" role="status">Hardware selected</span><p id="screen-detail">Two working prototypes.</p></div>
+          <button class="icon-button" type="button" data-pocket-action="next" aria-label="Next item" title="Next item"></button>
+          <button class="pocket-confirm" type="button" data-pocket-action="confirm"></button>
+        </div>
+      </section>
+      <footer class="pocket-footer"><p>Colour and website concept. Illustrative screen.</p><a href="https://schulich-press-start-classic.vercel.app/">Original website</a></footer>
+    </main>
+    <dialog id="panel" class="system-panel"></dialog>
+    <script type="module" src="/pocket/main.js"></script>
+  </body>
+</html>

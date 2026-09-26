@@ -28,7 +28,17 @@ export const memberSchema = schema.object({
     height: schema.number().int().positive(),
     approved: schema.literal(true),
     credit: text,
-  }).optional(),
+    crop: schema.object({
+      left: schema.number().int().nonnegative(),
+      top: schema.number().int().nonnegative(),
+      width: schema.number().int().positive(),
+      height: schema.number().int().positive(),
+    }).optional(),
+  }).refine((avatar) => !avatar.crop || (
+    avatar.crop.width === avatar.crop.height
+    && avatar.crop.left + avatar.crop.width <= avatar.width
+    && avatar.crop.top + avatar.crop.height <= avatar.height
+  ), 'Headshot crops must be square and inside the original image.').optional(),
 }).refine((member) => member.profileApproved || (!member.biography && !member.interests.length), {
   message: 'Optional profile details require member approval.',
 });
@@ -99,6 +109,8 @@ export const siteSettingsSchema = schema.object({
   name: text,
   description: text,
   repositoryUrl: httpsUrl,
+  instagramUrl: httpsUrl.nullable().default(null),
+  linktreeUrl: httpsUrl.nullable().default(null),
   recruitmentStatus: schema.enum(['recruiting', 'paused', 'closed']),
   applicationUrl: httpsUrl.nullable(),
   publicContact: schema.object({

@@ -6,10 +6,10 @@ interface Props { appearance?: 'button' | 'text-link'; }
 const { appearance = 'button' } = Astro.props;
 const email = site.publicContact?.email;
 const href = email ? `mailto:${email}` : site.publicContact?.url ?? president.linkedin;
-const label = email ?? (site.publicContact?.url ? 'Contact SPS' : 'Connect with our president');
+const label = email ? 'Email SPS' : site.publicContact?.url ? 'Contact SPS' : 'Connect with our president';
 ---
 
-<a class={appearance} href={href} data-contact-link>
+<a class={appearance} href={href} aria-label={email ? `Email SPS at ${email}` : undefined} title={email} data-contact-link>
   {label}
   {email ? <Mail size={18} aria-hidden="true" /> : <ArrowUpRight size={18} aria-hidden="true" />}
 </a>

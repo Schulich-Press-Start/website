@@ -58,8 +58,51 @@ test('portraits and optional profile details need approval', () => {
   assert.equal(memberSchema.safeParse({ ...member, biography: 'Approved fixture biography.', profileApproved: true }).success, true);
   assert.equal(memberSchema.safeParse({ ...member, avatar: { src: '/images/team/test.png', alt: 'Test', width: 256, height: 256, approved: false, credit: 'Test' } }).success, false);
   assert.equal(memberSchema.safeParse({ ...member, linkedin: 'javascript:alert(1)' }).success, false);
-  assert.equal(club.members.every((record) => record.avatar === undefined), true);
+  assert.equal(memberSchema.safeParse({ ...member, avatar: undefined }).success, true);
   assert.equal(getInitials('Abdul Waase Qureshi'), 'AQ');
+});
+
+test('each approved member portrait has its own valid public image', async () => {
+  const paths = new Set<string>();
+  const revisedPortraits: Record<string, string> = {
+    'jonart-bajraktari': 'jonart-bajraktari-goatee-headshot-ai.webp',
+    'saifullah-asad': 'saifullah-asad-front-headshot-ai.webp',
+  };
+  for (const member of club.members) {
+    assert(member.avatar, `${member.name} needs the approved portrait.`);
+    assert.equal(member.avatar.approved, true);
+    const filename = revisedPortraits[member.id] ?? `${member.id}-ai.webp`;
+    assert.equal(member.avatar.src, `/images/team/${filename}`);
+    assert(member.avatar.alt.includes(member.name));
+    assert.equal(member.avatar.credit, 'AI-generated, member-approved.');
+    const image = sharp(`public${member.avatar.src}`);
+    const metadata = await image.metadata();
+    const statistics = await image.stats();
+    assert.equal(metadata.format, 'webp');
+    assert.equal(metadata.width, member.avatar.width);
+    assert.equal(metadata.height, member.avatar.height);
+    assert.equal(metadata.hasAlpha, true);
+    assert.equal(statistics.channels[3].min, 0);
+    assert.equal(statistics.channels[3].max, 255);
+    paths.add(member.avatar.src);
+  }
+  assert.equal(paths.size, club.members.length);
+});
+
+test('headshot crops preserve the approved face pixels and stay in bounds', async () => {
+  for (const member of club.members) {
+    const avatar = member.avatar!;
+    assert(avatar.crop);
+    const cropped = sharp(`src/assets/generated/team/${member.id}-headshot.png`);
+    const metadata = await cropped.metadata();
+    assert.equal(metadata.width, avatar.crop.width);
+    assert.equal(metadata.height, avatar.crop.height);
+    assert.equal(metadata.width, metadata.height);
+    const expected = await sharp(`public${avatar.src}`).extract(avatar.crop).ensureAlpha().raw().toBuffer();
+    assert.deepEqual(await cropped.ensureAlpha().raw().toBuffer(), expected);
+    assert.equal(memberSchema.safeParse({ ...member, avatar: { ...avatar, crop: { ...avatar.crop, left: avatar.width } } }).success, false);
+    assert.equal(memberSchema.safeParse({ ...member, avatar: { ...avatar, crop: { ...avatar.crop, height: 200 } } }).success, false);
+  }
 });
 
 test('published journal entries require approval, date, authors and evidence', () => {
@@ -77,10 +120,18 @@ test('published journal entries require approval, date, authors and evidence', (
   assert.deepEqual(club.games, []);
 });
 
-test('missing destinations are intentional, and unsafe or unapproved ones are rejected', () => {
-  assert.equal(site.applicationUrl, null);
-  assert.equal(site.publicContact, null);
+test('approved destinations are configured and unsafe or unapproved ones are rejected', () => {
+  assert.equal(site.applicationUrl, 'https://docs.google.com/forms/d/1ivE8y-b9iFOp2NKrjTDpZ3uFLKTWS5FnDwUbDX5yA6g/viewform');
+  assert.equal(site.instagramUrl, 'https://www.instagram.com/sps_ucalgary');
+  assert.equal(site.linktreeUrl, 'https://linktr.ee/sps_ucalgary');
+  assert.deepEqual(site.publicContact, { approved: true, email: 'schulichpressstart@gmail.com' });
   assert.equal(site.repositoryUrl, 'https://github.com/Schulich-Press-Start/website');
+  assert.equal(siteSettingsSchema.safeParse({ ...site, applicationUrl: null, instagramUrl: null, linktreeUrl: null, publicContact: null }).success, true);
+  for (const field of ['applicationUrl', 'instagramUrl', 'linktreeUrl']) {
+    for (const url of ['javascript:alert(1)', 'http://example.org', 'https://user:secret@example.org']) {
+      assert.equal(siteSettingsSchema.safeParse({ ...site, [field]: url }).success, false);
+    }
+  }
   assert.equal(siteSettingsSchema.safeParse({ ...site, applicationUrl: '' }).success, false);
   assert.equal(siteSettingsSchema.safeParse({ ...site, applicationUrl: 'http://example.org' }).success, false);
   assert.equal(siteSettingsSchema.safeParse({ ...site, applicationUrl: 'https://user:secret@example.org' }).success, false);
@@ -88,6 +139,27 @@ test('missing destinations are intentional, and unsafe or unapproved ones are re
   assert.equal(siteSettingsSchema.safeParse({ ...site, indexable: true }).success, false);
   assert.equal(siteSettingsSchema.safeParse({ ...site, productionOrigin: '' }).success, false);
   assert.equal(siteSettingsSchema.safeParse({ ...site, publicContact: { approved: false, email: 'test@example.org' } }).success, false);
+});
+
+test('Vercel keeps static delivery, security headers and private upload exclusions', () => {
+  const configuration = JSON.parse(readFileSync('vercel.json', 'utf8'));
+  assert.equal(configuration.framework, 'astro');
+  assert.equal(configuration.installCommand, 'npm ci');
+  assert.equal(configuration.buildCommand, 'npm run check && npm run test:unit && npm run build');
+  assert.equal(configuration.outputDirectory, 'dist');
+  assert.equal(configuration.trailingSlash, true);
+  assert.equal(configuration.public, false);
+  const headers = configuration.headers.find((rule: { source: string }) => rule.source === '/(.*)').headers;
+  const cloudflare = readFileSync('public/_headers', 'utf8');
+  for (const key of ['X-Content-Type-Options', 'Referrer-Policy', 'X-Frame-Options', 'Permissions-Policy', 'Content-Security-Policy']) {
+    const expected = cloudflare.split('\n').find((line) => line.trimStart().startsWith(`${key}: `))!.trim().slice(key.length + 2);
+    assert.equal(headers.find((header: { key: string }) => header.key === key).value, expected);
+  }
+  assert.equal(headers.find((header: { key: string }) => header.key === 'X-Robots-Tag').value, 'noindex, nofollow');
+  const exclusions = readFileSync('.vercelignore', 'utf8').split('\n');
+  for (const path of ['.local', '.vscode', '.env', '.env.*', '.vercel', '.playwright-mcp', 'test-results', 'docs']) {
+    assert(exclusions.includes(path), `Private upload exclusion missing: ${path}`);
+  }
 });
 
 test('generated CAD derivatives preserve source pixels and product geometry', async () => {

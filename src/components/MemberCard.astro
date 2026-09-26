@@ -18,7 +18,7 @@ const reviewVideo = import.meta.env.DEV && process.env.SPS_REVIEW === '1'
     <Avatar member={member} />
     <span class="member-identity">
       <span class="member-name">{member.name}</span>
-      <span class="member-role">{roleLabel}</span>
+      <span class="member-role">{membership.role === 'president' ? 'President' : membership.role === 'lead' ? 'Lead' : 'Member'}</span>
       {member.coFounder && <span class="member-founder">Co-Founder</span>}
     </span>
     <Plus size={18} class="member-toggle-icon" aria-hidden="true" />
@@ -36,7 +36,6 @@ const reviewVideo = import.meta.env.DEV && process.env.SPS_REVIEW === '1'
         <figcaption>Silent animation concept / awaiting member approval.</figcaption>
       </figure>
     )}
-    {member.avatar && <p class="small">Portrait: {member.avatar.credit}</p>}
   </div>
 </details>
 

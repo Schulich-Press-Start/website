@@ -5,7 +5,7 @@ import ContactLink from '../components/ContactLink.astro';
 import { president, site } from '../data/club';
 ---
 
-<BaseLayout title="Support" description="Support Schulich Press Start's student-built gaming handheld through parts, tools, technical guidance or project funding.">
+<BaseLayout title="Support" description="Support SPS's student-built handheld through parts, technical guidance or funding, and learn about the club's pending school approval and faculty-advisor search.">
   <section class="page-intro">
     <div class="container">
       <div class="support-intro">
@@ -26,11 +26,22 @@ import { president, site } from '../data/club';
       </div>
     </div>
   </section>
+  <section class="section platform-band dark" aria-labelledby="approval-title">
+    <div class="container split-story">
+      <h2 id="approval-title">Building the club,<br />as well as the handheld.</h2>
+      <div>
+        <span class="status">School approval pending</span>
+        <p class="lead">We're seeking approval from the Schulich School of Engineering.</p>
+        <p>Our current steps are completing the club constitution and confirming a faculty advisor.</p>
+        <p>Approval would allow us to apply for support through the Schulich Student Activities Fund (SSAF). This is a planned funding application, not an award of funding.</p>
+      </div>
+    </div>
+  </section>
   <section class="section support-contact" id="contact" aria-labelledby="contact-title">
     <div class="container split-story">
       <h2 id="contact-title">Let's make<br />something happen.</h2>
       <div>
-        <p class="lead">Interested in supporting the build?</p>
+        <p class="lead">Interested in advising the team or supporting the build?</p>
         <p>Tell us a little about your organisation and the kind of support you have in mind.</p>
         <div class="actions"><ContactLink /></div>
         {!site.publicContact && <p class="contact-note">Sponsorship enquiries: connect with {president.name}, President and Co-Founder, through LinkedIn.</p>}

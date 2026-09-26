@@ -1,0 +1,85 @@
+body[data-cartridge-finish="white-grid"] {
+  --ink: #282a30;
+  --surface: #ffffff;
+  --muted: #555963;
+  --line: #282a302b;
+  --accent: #63349f;
+  --workbench: #ffffff;
+  --workbench-button: #ffffff;
+  --workbench-button-ink: #282a30;
+  --workbench-border: #b8bcc5;
+  --workbench-shadow: #cbd0d9;
+  --portrait-1: #eeebf4;
+  --portrait-2: #f4efe9;
+  --portrait-3: #e9f0ed;
+  --portrait-4: #f2f1e5;
+  --portrait-5: #eeedf2;
+  --grid-lines: linear-gradient(#cbd0d94d 1px, transparent 1px), linear-gradient(90deg, #cbd0d94d 1px, transparent 1px), linear-gradient(#dfe2e8a6 1px, transparent 1px), linear-gradient(90deg, #dfe2e8a6 1px, transparent 1px);
+  color: var(--ink);
+  background-color: var(--workbench);
+  background-image: var(--grid-lines);
+  background-size: 140px 140px, 140px 140px, 28px 28px, 28px 28px;
+}
+
+body[data-cartridge-finish="white-grid"] .boot {
+  background-image: var(--grid-lines);
+  background-size: 140px 140px, 140px 140px, 28px 28px, 28px 28px;
+}
+
+body[data-cartridge-finish="white-grid"][data-booted="true"] {
+  background-image: none;
+}
+
+body[data-cartridge-finish="white-grid"] .boot-disc {
+  border-color: #e8eaf0;
+  box-shadow: 2px 12px 0 #cbd0d9, 20px 40px 45px #28304720;
+}
+
+body[data-cartridge-finish="white-grid"] .cartridge-scene > img {
+  filter: drop-shadow(25px 40px 30px #28304725);
+}
+
+body[data-cartridge-finish="white-grid"] .system-panel::backdrop {
+  background: #25282e66;
+}
+
+.workbench-switch {
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+}
+
+.workbench-switch a {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+}
+
+.workbench-switch a[aria-current="page"] {
+  border-color: currentColor;
+}
+
+.workbench-switch span {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #ffffff70;
+  border-radius: 50%;
+  background-color: var(--finish-swatch);
+}
+
+.workbench-switch [data-finish-pick="white-grid"] span {
+  background-image: linear-gradient(#b8bcc5 1px, transparent 1px), linear-gradient(90deg, #b8bcc5 1px, transparent 1px);
+  background-size: 6px 6px;
+}
+
+body[data-cartridge-finish="white-grid"] .workbench-switch span {
+  border-color: #b8bcc5;
+}
+
+@media (max-width: 900px) {
+  .workbench-switch { margin-top: .7rem; }
+}

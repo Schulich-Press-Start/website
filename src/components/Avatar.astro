@@ -1,10 +1,17 @@
 ---
 import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
 import { existsSync } from 'node:fs';
 import { getInitials, type Member } from '../data/model';
 
 interface Props { member: Member; }
 const { member } = Astro.props;
+const portraits = import.meta.glob<{ default: ImageMetadata }>('/public/images/team/*.{webp,png,avif}', { eager: true });
+const headshots = import.meta.glob<{ default: ImageMetadata }>('/src/assets/generated/team/*-headshot.png', { eager: true });
+const approvedPortrait = member.avatar?.crop
+  ? headshots[`/src/assets/generated/team/${member.id}-headshot.png`]?.default
+  : member.avatar ? portraits[`/public${member.avatar.src}`]?.default : undefined;
+if (member.avatar && !approvedPortrait) throw new Error(`Missing approved portrait for ${member.id}.`);
 const reviewPortrait = import.meta.env.DEV && process.env.SPS_REVIEW === '1' && existsSync(new URL(`../../.local/review/portraits/${member.id}-ai.webp`, import.meta.url));
 const tones: Record<string, string> = {
   'abdul-waase-qureshi': 'purple',
@@ -15,9 +22,9 @@ const tones: Record<string, string> = {
 };
 ---
 
-<div class:list={['portrait', `portrait-${tones[member.id] ?? 'purple'}`, { 'portrait-character': member.avatar || reviewPortrait }]}>
-  {member.avatar ? (
-    <Image src={member.avatar.src} alt={member.avatar.alt} width={member.avatar.width} height={member.avatar.height} loading="lazy" />
+<div class:list={['portrait', `portrait-${tones[member.id] ?? 'purple'}`, { 'portrait-character': member.avatar || reviewPortrait, 'portrait-headshot': member.avatar?.crop }]}>
+  {member.avatar && approvedPortrait ? (
+    <Image src={approvedPortrait} alt={member.avatar.alt} width={approvedPortrait.width} height={approvedPortrait.height} widths={[120, 160, 240, 320].filter((width) => width <= approvedPortrait.width)} sizes="(max-width: 39rem) 42vw, 160px" loading="lazy" />
   ) : reviewPortrait ? (
     <>
       <img class="generated-portrait" src={`/__sps-review/portraits/${member.id}-ai.webp`} alt={`AI-generated Mii-style portrait concept for ${member.name}, awaiting member approval.`} width="640" height="768" loading="lazy" />

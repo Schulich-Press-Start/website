@@ -1,6 +1,6 @@
 ---
 import { Image } from 'astro:assets';
-import { Box, ArrowLeft, ArrowRight, RotateCcw, Play, X, Pause, Power, ScanLine } from '@lucide/astro';
+import { Box, ArrowLeft, ArrowRight, RotateCcw, Play, X, Pause, Power, ScanLine, Pipette } from '@lucide/astro';
 import poster from '../assets/handheld-concept.webp';
 
 interface Props { compact?: boolean; }
@@ -9,11 +9,11 @@ const { compact = false } = Astro.props;
 
 <div class:list={['handheld-viewer', { 'viewer-compact': compact }]} data-handheld-viewer>
   <div class="viewer-scene" data-viewer-scene>
-    <Image class="viewer-poster" src={poster} alt="The actual SPS handheld CAD geometry rendered in a proposed purple shell with orange controls: rectangular screen, cross D-pad, four round buttons and two lower pill buttons." width={618} widths={[200, 360, 618]} sizes="(max-width: 39rem) 180px, 360px" loading={compact ? 'eager' : 'lazy'} fetchpriority={compact ? 'high' : 'auto'} />
+    <Image class="viewer-poster" src={poster} alt="The actual SPS handheld CAD geometry rendered in a proposed purple shell with orange controls and an illustrative SPS screen." width={poster.width} widths={[200, 360, poster.width]} sizes="(max-width: 39rem) 220px, 400px" loading={compact ? 'eager' : 'lazy'} fetchpriority={compact ? 'high' : 'auto'} />
     <canvas class="viewer-canvas" tabindex="0" role="img" aria-label="Interactive SPS handheld model. Arrow keys rotate, Home resets, Escape returns to the static image." hidden></canvas>
   </div>
   <div class="viewer-launch">
-    <button class="viewer-load button" type="button" data-viewer-load hidden><Box size={18} aria-hidden="true" /><span data-viewer-load-label>Explore in 3D</span></button>
+    <button class="viewer-load button" type="button" data-viewer-load hidden aria-label={compact ? 'Press start: Explore in 3D' : 'Explore in 3D'}>{compact ? <Power size={18} aria-hidden="true" /> : <Box size={18} aria-hidden="true" />}<span data-viewer-load-label>{compact ? 'Press start' : 'Explore in 3D'}</span></button>
     <p class="viewer-status" role="status" aria-live="polite" data-viewer-status></p>
   </div>
   <div class="viewer-controls" data-viewer-controls hidden>
@@ -35,6 +35,10 @@ const { compact = false } = Astro.props;
     <div class="viewer-materials" role="group" aria-label="Model materials">
       <button class="material-swatch swatch-concept" type="button" aria-label="Purple and orange colour concept" title="Purple / orange concept" aria-pressed="true" data-viewer-concept></button>
       <button class="material-swatch swatch-original" type="button" aria-label="Source CAD materials" title="Source CAD materials" aria-pressed="false" data-viewer-original></button>
+      <label class="viewer-colour-picker" title="Choose shell colour">
+        <input type="color" value="#7543b9" aria-label="Shell colour" data-viewer-colour data-selected="false" />
+        <Pipette size={20} aria-hidden="true" />
+      </label>
       <span data-viewer-material-label>Colour concept</span>
     </div>
     <p class="viewer-concept-note">Screen animation is illustrative, not working firmware.</p>
@@ -52,6 +56,7 @@ const { compact = false } = Astro.props;
     const controls = viewer.querySelector<HTMLElement>('[data-viewer-controls]')!;
     const concept = viewer.querySelector<HTMLButtonElement>('[data-viewer-concept]')!;
     const original = viewer.querySelector<HTMLButtonElement>('[data-viewer-original]')!;
+    const shellColour = viewer.querySelector<HTMLInputElement>('[data-viewer-colour]')!;
     const materialLabel = viewer.querySelector<HTMLElement>('[data-viewer-material-label]')!;
     const power = viewer.querySelector<HTMLButtonElement>('[data-viewer-power]')!;
     const inspection = viewer.querySelector<HTMLButtonElement>('[data-viewer-inspect]')!;
@@ -59,9 +64,21 @@ const { compact = false } = Astro.props;
     const viewButtons = viewer.querySelectorAll<HTMLButtonElement>('[data-viewer-view]');
     let instance: Awaited<ReturnType<typeof import('../lib/handheld-viewer').mountHandheld>> | undefined;
     let loading = false;
+    const initialLabel = label.textContent;
+    const initialAccessibleLabel = load.getAttribute('aria-label')!;
     load.hidden = false;
     const setViewSelection = (name: string) => viewButtons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.viewerView === name)));
 
+    const applyShellColour = () => {
+      instance?.setShellColor(shellColour.value);
+      const isDefault = shellColour.value === shellColour.defaultValue;
+      concept.setAttribute('aria-pressed', String(isDefault));
+      original.setAttribute('aria-pressed', 'false');
+      shellColour.dataset.selected = String(!isDefault);
+      materialLabel.textContent = 'Colour concept';
+      inspection.setAttribute('aria-pressed', 'false');
+      viewer.dataset.inspection = 'false';
+    };
     const close = () => {
       instance?.dispose();
       instance = undefined;
@@ -72,7 +89,8 @@ const { compact = false } = Astro.props;
       viewer.dataset.ready = 'false';
       viewer.dataset.inspection = 'false';
       status.textContent = '';
-      label.textContent = 'Explore in 3D';
+      label.textContent = initialLabel;
+      load.setAttribute('aria-label', initialAccessibleLabel);
       load.focus();
     };
     load.addEventListener('click', async () => {
@@ -80,6 +98,7 @@ const { compact = false } = Astro.props;
       loading = true;
       load.disabled = true;
       label.textContent = 'Loading model';
+      load.setAttribute('aria-label', 'Loading model');
       status.textContent = 'Loading the handheld model.';
       try {
         const { mountHandheld } = await import('../lib/handheld-viewer');
@@ -95,12 +114,8 @@ const { compact = false } = Astro.props;
         load.hidden = true;
         controls.hidden = false;
         viewer.dataset.ready = 'true';
-        concept.setAttribute('aria-pressed', 'true');
-        original.setAttribute('aria-pressed', 'false');
-        materialLabel.textContent = 'Colour concept';
+        applyShellColour();
         power.setAttribute('aria-pressed', 'true');
-        inspection.setAttribute('aria-pressed', 'false');
-        viewer.dataset.inspection = 'false';
         status.textContent = '';
         instance.intro();
         canvas.focus({ preventScroll: true });
@@ -110,6 +125,7 @@ const { compact = false } = Astro.props;
         poster.hidden = false;
         status.textContent = '3D is unavailable here. The prototype image is still available.';
         label.textContent = 'Retry 3D';
+        load.setAttribute('aria-label', 'Retry 3D');
       } finally {
         loading = false;
         load.disabled = false;
@@ -138,14 +154,19 @@ const { compact = false } = Astro.props;
       viewer.dataset.inspection = String(active);
     });
     viewer.querySelector('[data-viewer-close]')!.addEventListener('click', close);
-    for (const [button, isConcept] of [[concept, true], [original, false]] as const) {
-      button.addEventListener('click', () => {
-        instance?.setConcept(isConcept);
-        concept.setAttribute('aria-pressed', String(isConcept));
-        original.setAttribute('aria-pressed', String(!isConcept));
-        materialLabel.textContent = isConcept ? 'Colour concept' : 'Source CAD materials';
-      });
-    }
+    shellColour.addEventListener('input', applyShellColour);
+    shellColour.addEventListener('change', applyShellColour);
+    concept.addEventListener('click', () => {
+      shellColour.value = shellColour.defaultValue;
+      applyShellColour();
+    });
+    original.addEventListener('click', () => {
+      instance?.setConcept(false);
+      concept.setAttribute('aria-pressed', 'false');
+      original.setAttribute('aria-pressed', 'true');
+      shellColour.dataset.selected = 'false';
+      materialLabel.textContent = 'Source CAD materials';
+    });
     viewer.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && instance) close();
       if (event.target !== canvas || !instance) return;

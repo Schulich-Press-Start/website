@@ -1,6 +1,6 @@
 ---
 import { Image } from 'astro:assets';
-import { ArrowDown, ArrowUpRight, ChevronRight, CircuitBoard, Code, Box, Gamepad2 } from '@lucide/astro';
+import { ArrowDown, ArrowUpRight, ChevronRight, CircuitBoard, Code, Box, Gamepad2, Plus } from '@lucide/astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Avatar from '../components/Avatar.astro';
 import JoinBand from '../components/JoinBand.astro';
@@ -8,76 +8,89 @@ import HandheldViewer from '../components/HandheldViewer.astro';
 import { club, currentRoster, site } from '../data/club';
 import { getRoleLabel } from '../data/model';
 import signature from '../assets/generated/signature.png';
-import closeUp from '../../design/reference/prototype1-3.png';
+import closeUp from '../assets/handheld-controls.webp';
 ---
 
 <BaseLayout title={site.name}>
-  <section class="home-hero product-theatre" aria-labelledby="hero-title" data-product-stage>
-    <div class="container theatre-inner">
-      <div class="theatre-meta"><span>University of Calgary</span><span>Engineering, with a playful side.</span></div>
-      <div class="theatre-stage">
-        <h1 id="hero-title" class="theatre-title"><span class="theatre-school">Schulich</span><span class="theatre-press">press</span><span class="theatre-start">start.</span></h1>
-        <figure class="hero-product theatre-model">
-          <HandheldViewer compact />
-          <figcaption>The SPS handheld / Colour concept</figcaption>
-        </figure>
-        <span class="theatre-detail theatre-detail-left">Custom handheld hardware.<br />Original games.</span>
-        <span class="theatre-detail theatre-detail-right">Student-built.<br />Still taking shape.</span>
-      </div>
-      <div class="theatre-bottom">
-        <p>We play games.<br /> We build the whole thing.</p>
-        <div class="actions">
-          <a class="button" href="/handheld/">Meet our handheld <ArrowUpRight size={19} aria-hidden="true" /></a>
-          <a class="text-link" href="/join/">Join the build <ChevronRight size={17} aria-hidden="true" /></a>
+  <section class="home-hero arcade-hero dark" aria-labelledby="hero-title" data-product-stage>
+    <div class="container arcade-inner">
+      <div class="arcade-meta"><span class="status">University of Calgary</span><span>Handheld hardware &amp; original games</span></div>
+      <div class="arcade-stage">
+        <div class="arcade-copy">
+          <h1 id="hero-title" class="arcade-title"><span class="arcade-school">Schulich</span> <span>Press</span> <span>Start.</span></h1>
+          <p class="arcade-description">For the love of the game.<br /> And everything that makes it.</p>
+          <div class="actions arcade-actions">
+            <a class="text-link" href="/handheld/">Meet our handheld <ArrowUpRight size={19} aria-hidden="true" /></a>
+            <a class="text-link" href="/join/">Join the build <ChevronRight size={17} aria-hidden="true" /></a>
+          </div>
         </div>
+        <figure class="hero-product arcade-model">
+          <HandheldViewer compact />
+          <figcaption>SPS enclosure prototype / Colour and screen concept</figcaption>
+        </figure>
       </div>
     </div>
-    <div class="hero-footer">
+    <div class="hero-footer arcade-footer">
       <div class="container">
-        <span>Custom hardware. Original games. Made together.</span>
+        <span>Built by students. Made to play.</span>
         <a href="#intro-title" aria-label="Discover the SPS project"><ArrowDown size={20} aria-hidden="true" /></a>
       </div>
     </div>
   </section>
 
-  <section class="section" aria-labelledby="intro-title">
+  <section class="section home-introduction" aria-labelledby="intro-title">
     <div class="container intro-grid">
-      <h2 id="intro-title">A small handheld.<br />A very big idea.</h2>
+      <h2 id="intro-title">A small handheld.<br />A whole lot of making.</h2>
       <div>
-        <p class="lead">From the first circuit to the final boss.</p>
-        <p>Schulich Press Start brings different disciplines together to develop a custom gaming handheld, from the electronics inside to the enclosure in your hands and the games on screen.</p>
-        <a class="text-link" href="/handheld/">Explore the prototype <ArrowUpRight size={17} aria-hidden="true" /></a>
+        <p class="lead">Two working prototypes. A Game Boy-inspired build next.</p>
+        <p>Schulich Press Start is an engineering design club building gaming handheld systems from the ground up. Members work across custom PCB design, embedded firmware, game development and mechanical enclosure design.</p>
+        <p>Our next goal is a completed Game Boy-inspired handheld by June.</p>
+        <a class="text-link" href="/handheld/">Explore the build <ArrowUpRight size={17} aria-hidden="true" /></a>
       </div>
     </div>
   </section>
 
-  <section class="section engineering-section" aria-labelledby="engineering-title">
-    <div class="container engineering-grid">
-      <figure class="engineering-photo">
-        <Image src={closeUp} alt="Close-up of the supplied CAD model showing the D-pad, four circular action buttons and two lower pill controls." widths={[400, 640, 851]} sizes="(max-width: 39rem) calc(100vw - 40px), (max-width: 70rem) 45vw, 560px" quality={85} />
-        <figcaption>A closer look at the enclosure study. Colours are concepts, not final specifications.</figcaption>
-      </figure>
-      <div class="engineering-copy">
+  <section class="section home-workbench" aria-labelledby="engineering-title">
+    <div class="container">
+      <div class="workbench-heading">
         <h2 id="engineering-title">Many minds.<br />One machine.</h2>
-        <p>A handheld is where a lot of different ideas have to work together. That's the part we're here for.</p>
-        <ul class="discipline-list">
-          <li><CircuitBoard size={19} aria-hidden="true" /><div><strong>Electronics</strong><p>The circuits and components at the heart of the build.</p></div></li>
-          <li><Code size={19} aria-hidden="true" /><div><strong>Embedded software</strong><p>Bringing the hardware and game experience together.</p></div></li>
-          <li><Box size={19} aria-hidden="true" /><div><strong>Mechanical design</strong><p>Turning a control layout into something you can hold.</p></div></li>
-          <li><Gamepad2 size={19} aria-hidden="true" /><div><strong>Original games</strong><p>Making the experiences that give the hardware a purpose.</p></div></li>
-        </ul>
-        <a class="text-link" href="/journal/">Follow the build <ArrowUpRight size={17} aria-hidden="true" /></a>
+        <p>Every button is a meeting point for electronics, software and mechanical design. We're building those connections together.</p>
+      </div>
+      <div class="workbench-grid">
+        <figure class="workbench-image">
+          <Image src={closeUp} alt="Close-up of the actual SPS enclosure model, with its cross D-pad, round action buttons and lower pill controls in proposed purple and orange colours." widths={[320, 560, closeUp.width]} sizes="(max-width: 39rem) calc(100vw - 40px), 55vw" quality={85} />
+          <figcaption>Actual CAD geometry. Proposed colours, not final specifications.</figcaption>
+        </figure>
+        <div class="workbench-topics">
+          <details name="build-disciplines" open>
+            <summary><CircuitBoard size={24} aria-hidden="true" /><h3>Electronics</h3><Plus class="topic-toggle" size={19} aria-hidden="true" /></summary>
+            <div><p>Custom PCB design, component selection, power planning and testing. The hardware team takes the handheld's electronics from schematic to board.</p><a class="text-link" href="/team/#embedded-hardware">Meet the hardware team <ArrowUpRight size={16} aria-hidden="true" /></a></div>
+          </details>
+          <details name="build-disciplines">
+            <summary><Code size={24} aria-hidden="true" /><h3>Embedded software</h3><Plus class="topic-toggle" size={19} aria-hidden="true" /></summary>
+            <div><p>Firmware, board support, device drivers and hardware APIs connect the PCB to the games. Our plan centres on Zephyr RTOS. Zephyr is the proposed platform, subject to hardware selection.</p><a class="text-link" href="/team/#embedded-software">Meet the software team <ArrowUpRight size={16} aria-hidden="true" /></a></div>
+          </details>
+          <details name="build-disciplines">
+            <summary><Box size={24} aria-hidden="true" /><h3>Mechanical design</h3><Plus class="topic-toggle" size={19} aria-hidden="true" /></summary>
+            <div><p>Enclosure CAD, button layout, assembly and physical prototyping. The mechanical team designs for fit, comfort and manufacturability.</p><a class="text-link" href="/team/#mechanical">Meet the mechanical team <ArrowUpRight size={16} aria-hidden="true" /></a></div>
+          </details>
+          <details name="build-disciplines">
+            <summary><Gamepad2 size={24} aria-hidden="true" /><h3>Original games</h3><Plus class="topic-toggle" size={19} aria-hidden="true" /></summary>
+            <div><p>Game mechanics, art, sound and playtesting. Original experiences are being developed alongside the hardware.</p><a class="text-link" href="/team/#game-design">Meet Game Design <ArrowUpRight size={16} aria-hidden="true" /></a></div>
+          </details>
+          <a class="text-link workbench-journal" href="/journal/">From the workbench <ArrowUpRight size={17} aria-hidden="true" /></a>
+        </div>
       </div>
     </div>
   </section>
 
-  <section class="section game-section" aria-labelledby="games-title">
+  <section class="section game-section home-games" aria-labelledby="games-title">
     <div class="container game-grid">
       <div class="game-copy">
-        <h2 id="games-title">Made to play.<br />Made by us.</h2>
+        <h2 id="games-title">Our hardware.<br />Our next adventure.</h2>
         <p class="lead">Original games are part of the project, too.</p>
-        <p>Our Game Design division develops the ideas and experiences that will live on the handheld, alongside the people building its hardware and software.</p>
-        <a class="text-link" href="/join/#game-design">Meet your next creative project <ArrowUpRight size={17} aria-hidden="true" /></a>
+        <p>Our prototypes already run demos of Pong, Tomb of the Mask and Brick Breaker. Alongside those demos, our Game Design division is developing original games for the handheld.</p>
+        <a class="text-link" href="/join/">Meet your next creative project <ArrowUpRight size={17} aria-hidden="true" /></a>
       </div>
       <figure class="game-placeholder">
         <Image src={signature} alt="" width={72} aria-hidden="true" />
@@ -91,7 +104,7 @@ import closeUp from '../../design/reference/prototype1-3.png';
   <section class="section home-team" aria-labelledby="team-preview-title">
     <div class="container">
       <div class="section-heading">
-        <h2 id="team-preview-title">Good hardware.<br />Great company.</h2>
+        <h2 id="team-preview-title">Meet the players.</h2>
         <a class="text-link" href="/team/">The SPS team <ArrowUpRight size={17} aria-hidden="true" /></a>
       </div>
       <div class="team-preview">
@@ -130,3 +143,166 @@ import closeUp from '../../design/reference/prototype1-3.png';
     introduce();
   }
 </script>
+
+<style>
+  .arcade-hero { background: #251832; color: var(--paper); }
+  .arcade-inner { padding-block: 1.25rem 1.5rem; }
+  .arcade-meta { display: flex; align-items: center; justify-content: space-between; gap: 1rem; font-size: 0.8rem; color: #d6c7df; }
+  .arcade-meta .status { font-size: inherit; }
+  .arcade-stage { position: relative; display: flex; align-items: center; height: min(36rem, calc(100svh - 18rem)); min-height: 28rem; isolation: isolate; }
+  .arcade-stage::before { content: ''; position: absolute; z-index: -1; right: -28%; top: 14%; width: 77%; height: 62%; background: #6b3f9f; transform: skewY(-17deg); }
+  .arcade-copy { position: relative; width: 44%; z-index: 2; padding-block: 2rem; }
+  .arcade-title { margin: 0; font-size: 6rem; font-weight: 700; line-height: 0.96; color: var(--paper); }
+  .arcade-title > span { display: block; }
+  .arcade-title .arcade-school { font-family: var(--font-body); font-size: 1.25rem; line-height: 1.5; font-weight: 500; margin-bottom: 1rem; color: var(--orange); }
+  .arcade-description { font-size: 1.2rem; line-height: 1.55; color: #ded1e5; margin-top: 1.6rem; }
+  .arcade-actions { gap: 0.5rem 1.5rem; margin-top: 1.8rem; }
+  .arcade-actions .text-link { font-size: 0.95rem; color: var(--paper); }
+  .arcade-actions .text-link:hover { color: var(--orange); }
+  .arcade-model { position: absolute; inset: 0 0 0 auto; width: 54%; height: 100%; padding: 0.8rem 0 0.4rem; margin: 0; display: flex; flex-direction: column; align-items: center; }
+  .arcade-model > figcaption { position: static; width: 100%; max-width: none; margin-top: 0.4rem; text-align: center; font-size: 0.68rem; line-height: 1.5; color: #e0d0ee; }
+  .arcade-model :global(.handheld-viewer) { width: 100%; height: calc(100% - 2rem); display: grid; grid-template-rows: minmax(0, 1fr) auto; }
+  .arcade-model :global(.viewer-scene) { min-height: 0; height: 100%; width: 100%; }
+  .arcade-model :global(.viewer-poster) { inset: 3% 7%; width: 86%; height: 94%; max-width: none; max-height: none; object-fit: contain; filter: drop-shadow(18px 24px 9px #10081e55); }
+  .arcade-model :global(.viewer-launch) { padding-block: 0.4rem; }
+  .arcade-model :global(.viewer-load) { position: static; transform: none; min-height: 3.15rem; padding-inline: 1.6rem; font-family: var(--font-display); font-weight: 700; font-size: 1rem; color: var(--deep); background: var(--orange); border-radius: 4px; }
+  .arcade-model :global(.viewer-load:hover) { background: var(--paper); }
+  .arcade-model :global(.viewer-status) { color: var(--paper); }
+  .arcade-model :global(.viewer-controls) { position: static; justify-content: center; padding: 0.7rem; gap: 0.6rem 1rem; background: var(--deep); border: 1px solid #b895d04d; border-radius: 4px; }
+  .arcade-model :global(.viewer-concept-note) { color: #d6c4e5; }
+  .arcade-model :global(.viewer-views) { border-color: #d2b6e15a; }
+  .arcade-model :global(.viewer-tools .icon-button) { width: 2.65rem; height: 2.75rem; }
+  .arcade-model :global(.viewer-materials > span) { font-size: 0.75rem; }
+  .arcade-model :global(.viewer-canvas:focus-visible) { outline-offset: -5px; }
+  .arcade-stage:has([data-ready='true']) { height: 44rem; }
+  .arcade-stage:has([data-inspection='true'])::before { background: #3d2851; }
+  .arcade-footer { border: 0; background: var(--orange); color: var(--deep); }
+  .arcade-footer .container { min-height: 3.3rem; color: var(--deep); font-size: 0.9rem; font-weight: 550; }
+  .arcade-footer a { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; color: var(--deep); }
+  .arcade-footer a:hover { background: #ffffff40; }
+  .home-introduction { padding-block: 3rem 5rem; }
+  .home-introduction h2 { font-size: 2.7rem; }
+  .home-introduction .lead { font-size: 1.45rem; }
+  .home-workbench { background: #efedf3; padding-block: 4.5rem 5rem; }
+  .workbench-heading { display: flex; align-items: end; justify-content: space-between; gap: 3rem; margin-bottom: 2.5rem; }
+  .workbench-heading h2 { font-size: 3.1rem; line-height: 1.08; }
+  .workbench-heading p { color: var(--muted); font-size: 1.05rem; max-width: 44ch; }
+  .workbench-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 4.5rem; align-items: center; }
+  .workbench-image { position: relative; min-width: 0; }
+  .workbench-image img { width: 100%; height: 33rem; object-fit: contain; }
+  .workbench-image figcaption { margin-top: 1rem; font-size: 0.75rem; color: var(--muted); }
+  .workbench-topics { min-width: 0; }
+  .workbench-topics details { border-top: 1px solid #c7bfce; }
+  .workbench-topics summary { display: grid; grid-template-columns: 1.5rem minmax(0, 1fr) 1.75rem; align-items: center; gap: 1rem; min-height: 5rem; padding-block: 1rem; list-style: none; }
+  .workbench-topics summary::-webkit-details-marker { display: none; }
+  .workbench-topics summary:hover { color: var(--purple-companion); }
+  .workbench-topics summary h3 { font-size: 1.3rem; font-family: var(--font-body); font-weight: 600; }
+  .workbench-topics summary :global(svg) { color: var(--purple-companion); }
+  .workbench-topics details > div { padding: 0 0 1.3rem 2.5rem; }
+  .workbench-topics p { color: var(--muted); font-size: 1rem; }
+  .workbench-topics .text-link { font-size: 0.9rem; margin-top: 0.5rem; }
+  .workbench-topics :global(.topic-toggle) { justify-self: center; }
+  .workbench-topics details[open] :global(.topic-toggle) { transform: rotate(45deg); }
+  .workbench-topics .workbench-journal { margin-top: 1.5rem; }
+  .home-games { padding-block: 5rem; }
+  .home-games .game-copy h2 { font-size: 2.9rem; }
+  .home-games .game-placeholder { order: -1; min-height: 24rem; aspect-ratio: auto; background: #39254f; }
+  .home-games .game-placeholder > p { font-size: 3.5rem; }
+  .home-team { padding-block: 4.5rem; }
+  .home-team .section-heading h2 { font-size: 2.8rem; }
+
+  @media (min-width: 100rem) {
+    .arcade-stage { height: 41rem; }
+    .arcade-title { font-size: 7.2rem; }
+  }
+  @media (max-width: 70rem) {
+    .arcade-title { font-size: 5.2rem; }
+    .arcade-actions { flex-direction: column; align-items: start; gap: 0.4rem; }
+    .workbench-grid { gap: 2.5rem; }
+  }
+  @media (max-width: 54rem) {
+    .arcade-title { font-size: 4.6rem; }
+    .arcade-description { font-size: 1.05rem; }
+    .arcade-meta { font-size: 0.7rem; }
+    .arcade-stage { height: 35rem; }
+    .arcade-model { width: 54%; }
+    .arcade-copy { width: 44%; }
+    .arcade-model > figcaption { font-size: 0.58rem; }
+    .arcade-model :global(.viewer-controls) { padding-inline: 0.35rem; }
+    .arcade-model :global(.viewer-tools) { gap: 0.15rem; }
+    .arcade-model :global(.viewer-tools .icon-button) { width: 2.4rem; }
+    .home-introduction { padding-block: 3rem 4rem; }
+    .home-introduction h2 { font-size: 2.25rem; }
+    .workbench-heading { gap: 2rem; align-items: start; }
+    .workbench-heading h2 { font-size: 2.4rem; }
+    .workbench-heading p { max-width: 34ch; font-size: 0.95rem; }
+    .workbench-grid { gap: 2rem; }
+    .workbench-image img { height: 27rem; }
+    .workbench-topics summary { gap: 0.7rem; }
+    .workbench-topics summary h3 { font-size: 1.1rem; }
+    .workbench-topics details > div { padding-left: 0; }
+    .home-games .game-copy h2 { font-size: 2.4rem; }
+    .home-team .section-heading h2 { font-size: 2.3rem; }
+  }
+  @media (max-width: 39rem) {
+    .arcade-inner { padding-block: 1rem 1.3rem; }
+    .arcade-meta { gap: 0.7rem; font-size: 0.65rem; }
+    .arcade-meta > span:last-child { max-width: 19ch; text-align: right; }
+    .arcade-stage { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.9rem; height: auto; min-height: 0; }
+    .arcade-copy { display: contents; }
+    .arcade-title { grid-row: 1; font-size: 2.75rem; margin-top: 1.1rem; line-height: 1.1; }
+    .arcade-title > span:not(.arcade-school) { display: inline; }
+    .arcade-title .arcade-school { font-size: 0.95rem; margin-bottom: 0.3rem; }
+    .arcade-description { grid-row: 3; font-size: 0.93rem; margin: 0; }
+    .arcade-description br { display: none; }
+    .arcade-actions { grid-row: 4; flex-direction: row; align-items: center; gap: 0.5rem 1.2rem; margin: 0; }
+    .arcade-actions .text-link { font-size: 0.85rem; }
+    .arcade-model { position: relative; inset: auto; grid-row: 2; width: 100%; height: 19rem; min-height: 0; margin: 0; padding: 0; }
+    .arcade-stage::before { right: -45%; top: 31%; width: 125%; height: 30%; }
+    .arcade-model > figcaption { font-size: 0.55rem; }
+    .arcade-model :global(.viewer-poster) { inset: 2% 8%; width: 84%; height: 96%; }
+    .arcade-model :global(.viewer-load) { min-height: 2.9rem; font-size: 0.95rem; }
+    .arcade-stage:has([data-ready='true']) { height: auto; }
+    .arcade-stage:has([data-ready='true']) .arcade-model { height: 36rem; }
+    .arcade-footer .container { min-height: 2.9rem; font-size: 0.78rem; }
+    .home-introduction { padding-block: 2.5rem 3.5rem; }
+    .home-introduction h2 { font-size: 2.1rem; }
+    .home-introduction .lead { font-size: 1.2rem; }
+    .home-workbench { padding-block: 3.5rem; }
+    .workbench-heading { display: block; margin-bottom: 1.5rem; }
+    .workbench-heading h2 { font-size: 2.3rem; }
+    .workbench-heading p { max-width: none; margin-top: 1.2rem; }
+    .workbench-grid { grid-template-columns: minmax(0, 1fr); gap: 2rem; }
+    .workbench-image img { height: 23rem; }
+    .workbench-topics summary h3 { font-size: 1.2rem; }
+    .home-games { padding-block: 3.5rem; }
+    .home-games .game-placeholder { order: 0; min-height: 21rem; }
+    .home-games .game-copy h2 { font-size: 2.2rem; }
+    .home-team { padding-block: 3.5rem; }
+    .home-team .section-heading h2 { font-size: 2.1rem; }
+  }
+  @media (min-width: 40rem) and (max-height: 48rem) {
+    .arcade-stage { height: calc(100svh - 18.5rem); min-height: 22rem; }
+    .arcade-title { font-size: 4.2rem; }
+    .arcade-title .arcade-school { margin-bottom: 0.5rem; }
+    .arcade-description { font-size: 1rem; margin-top: 1rem; }
+    .arcade-actions { margin-top: 1rem; flex-direction: row; }
+    .arcade-model :global(.viewer-load) { min-height: 2.75rem; }
+  }
+  @media (max-width: 39rem) and (max-height: 48rem) {
+    .arcade-stage { grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); gap: 0.75rem; }
+    .arcade-title { grid-column: 1; grid-row: 1; font-size: 2.4rem; }
+    .arcade-title > span:not(.arcade-school) { display: block; }
+    .arcade-description { grid-column: 1; grid-row: 2; font-size: 0.82rem; }
+    .arcade-model { grid-column: 2; grid-row: 1 / 3; height: 15rem; }
+    .arcade-model :global(.viewer-load) { min-height: 2.75rem; font-size: 0.68rem; padding-inline: 0.6rem; gap: 0.45rem; }
+    .arcade-model > figcaption { font-size: 0.47rem; }
+    .arcade-actions { grid-column: 1 / -1; grid-row: 3; }
+    .arcade-actions .text-link { font-size: 0.8rem; }
+    .arcade-stage::before { width: 90%; right: -50%; top: 23%; height: 46%; }
+    .arcade-stage:has([data-ready='true']) .arcade-title { grid-column: 1 / -1; }
+    .arcade-stage:has([data-ready='true']) .arcade-model { grid-column: 1 / -1; grid-row: 2; }
+    .arcade-stage:has([data-ready='true']) .arcade-description { grid-column: 1 / -1; grid-row: 3; }
+    .arcade-stage:has([data-ready='true']) .arcade-actions { grid-row: 4; }
+  }
+</style>

@@ -1,0 +1,134 @@
+body[data-cartridge-finish="purple"] {
+  --ink: #ffffff;
+  --surface: #322148;
+  --muted: #eee7f8;
+  --line: #ffffff40;
+  --accent: #f8ca5b;
+  --workbench: #784ac3;
+  --workbench-button: #ffffff;
+  --workbench-button-ink: #322148;
+  --workbench-border: #ffffff60;
+  --workbench-shadow: #4c2c7c;
+  --portrait-1: #bdb2da;
+  --portrait-2: #ead1b0;
+  --portrait-3: #b9d3cc;
+  --portrait-4: #ddd79f;
+  --portrait-5: #d0bddc;
+  background: var(--workbench);
+  color: var(--ink);
+}
+
+body[data-cartridge-finish] .cartridge-heading h1,
+body[data-cartridge-finish] .cartridge-selection p,
+body[data-cartridge-finish] .cartridge-system .system-footer > span,
+body[data-cartridge-finish] .cartridge-system .console-wordmark > span,
+body[data-cartridge-finish] .cartridge-system .system-tools .icon-button {
+  color: var(--ink);
+}
+
+body[data-cartridge-finish] .physical-stamp,
+body[data-cartridge-finish] .physical-stamp span + span,
+body[data-cartridge-finish] .cartridge-rail {
+  border-color: var(--workbench-border);
+}
+
+body[data-cartridge-finish] .load-cartridge,
+body[data-cartridge-finish] .cartridge-tab {
+  color: var(--workbench-button-ink);
+  background: var(--workbench-button);
+  border-color: var(--workbench-border);
+  box-shadow: 0 4px 0 var(--workbench-shadow);
+}
+
+body[data-cartridge-finish] .cartridge-tab[aria-pressed="true"] {
+  border-color: var(--cart);
+  box-shadow: 0 4px 0 var(--cart);
+}
+
+body[data-cartridge-finish] .load-cartridge:hover,
+body[data-cartridge-finish] .cartridge-tab:hover {
+  background: #f5f3fa;
+}
+
+body[data-cartridge-finish] .load-glyph {
+  background: #e9e3f3;
+}
+
+body[data-cartridge-finish] .mini-cartridge {
+  border-color: #ffffff;
+  box-shadow: 0 2px 0 #24153325;
+}
+
+body[data-cartridge-finish] .boot {
+  background: var(--workbench);
+  color: var(--ink);
+}
+
+body[data-cartridge-finish] .boot-top > span,
+body[data-cartridge-finish] .boot-progress span {
+  color: var(--ink);
+}
+
+body[data-cartridge-finish] .boot-bottom {
+  border-color: var(--workbench-border);
+}
+
+body[data-cartridge-finish] .boot-start {
+  background: var(--workbench-button);
+  color: var(--workbench-button-ink);
+  border-color: var(--workbench-border);
+  box-shadow: 0 5px 0 var(--workbench-shadow);
+}
+
+body[data-cartridge-finish] .boot-start:hover {
+  background: #f8ca5b;
+  color: #322148;
+}
+
+body[data-cartridge-finish] .boot-disc {
+  background: #ffffff;
+  border-color: #eeeaf6;
+  box-shadow: 2px 12px 0 var(--workbench-shadow), 20px 40px 45px #24153330;
+}
+
+body[data-cartridge-finish] .boot-disc::before {
+  background: repeating-linear-gradient(135deg, #5d48ad 0 10px, #784ac3 10px 20px);
+}
+
+body[data-cartridge-finish] .boot-stripe {
+  display: none;
+}
+
+body[data-cartridge-finish] .sound-choice input {
+  accent-color: var(--accent);
+}
+
+body[data-cartridge-finish="purple"] .command.primary {
+  color: #322148;
+}
+
+.workbench-frame {
+  display: none;
+  pointer-events: none;
+}
+
+@media (max-width: 900px) {
+  body[data-cartridge-finish] .cartridge-scene {
+    position: absolute;
+    inset: 0;
+    height: 100%;
+    z-index: -1;
+    margin-top: 0;
+  }
+  .workbench-frame {
+    display: block;
+    order: 3;
+    height: 330px;
+    flex-shrink: 0;
+    margin-top: -.5rem;
+  }
+}
+
+@media (min-width: 601px) and (max-width: 900px) {
+  .workbench-frame { height: 420px; }
+}

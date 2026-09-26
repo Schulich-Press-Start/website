@@ -2,12 +2,23 @@ import sharp from 'sharp';
 import { copyFile, mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { prepareModel } from './model-assets.mjs';
+import { club } from '../src/data/club.ts';
 
 const sourceDirectory = new URL('../design/reference/', import.meta.url);
 const outputDirectory = new URL('../src/assets/generated/', import.meta.url);
 await mkdir(outputDirectory, { recursive: true });
 await mkdir(new URL('../public/', import.meta.url), { recursive: true });
 await prepareModel();
+
+const headshotDirectory = new URL('team/', outputDirectory);
+await mkdir(headshotDirectory, { recursive: true });
+for (const member of club.members) {
+  if (!member.avatar?.crop) continue;
+  await sharp(fileURLToPath(new URL(`../public${member.avatar.src}`, import.meta.url)))
+    .extract(member.avatar.crop)
+    .png()
+    .toFile(fileURLToPath(new URL(`${member.id}-headshot.png`, headshotDirectory)));
+}
 
 const licenceDirectory = new URL('../public/licenses/', import.meta.url);
 await mkdir(licenceDirectory, { recursive: true });

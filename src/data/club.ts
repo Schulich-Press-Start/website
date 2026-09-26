@@ -2,11 +2,13 @@ import { clubSchema, siteSettingsSchema } from './model.ts';
 
 export const site = siteSettingsSchema.parse({
   name: 'Schulich Press Start',
-  description: 'A University of Calgary engineering design club developing custom gaming handhelds, from electronics and enclosures to embedded software and original games.',
+  description: 'A University of Calgary engineering design club building gaming handhelds from the ground up through custom PCB design, embedded firmware, original games and mechanical enclosures.',
   repositoryUrl: 'https://github.com/Schulich-Press-Start/website',
+  instagramUrl: 'https://www.instagram.com/sps_ucalgary',
+  linktreeUrl: 'https://linktr.ee/sps_ucalgary',
   recruitmentStatus: 'recruiting',
-  applicationUrl: null,
-  publicContact: null,
+  applicationUrl: 'https://docs.google.com/forms/d/1ivE8y-b9iFOp2NKrjTDpZ3uFLKTWS5FnDwUbDX5yA6g/viewform',
+  publicContact: { approved: true, email: 'schulichpressstart@gmail.com' },
   sponsorProspectusUrl: null,
   productionOrigin: null,
   indexable: false,
@@ -14,22 +16,57 @@ export const site = siteSettingsSchema.parse({
 
 export const club = clubSchema.parse({
   members: [
-    { id: 'abdul-waase-qureshi', name: 'Abdul Waase Qureshi', coFounder: true, linkedin: 'https://www.linkedin.com/in/abdulwq/' },
-    { id: 'jonart-bajraktari', name: 'Jonart Bajraktari', coFounder: true, linkedin: 'https://www.linkedin.com/in/jonartb/' },
-    { id: 'yassin-soliman', name: 'Yassin Soliman', linkedin: 'https://www.linkedin.com/in/yassinsoliman/' },
-    { id: 'mujtaba-zia', name: 'Mujtaba Zia', linkedin: 'https://www.linkedin.com/in/mujtaba-zia/' },
-    { id: 'saifullah-asad', name: 'Saifullah Asad', linkedin: 'https://www.linkedin.com/in/saifasad/' },
+    {
+      id: 'abdul-waase-qureshi', name: 'Abdul Waase Qureshi', coFounder: true, linkedin: 'https://www.linkedin.com/in/abdulwq/',
+      avatar: {
+        src: '/images/team/abdul-waase-qureshi-ai.webp', alt: 'Mii-style portrait of Abdul Waase Qureshi.',
+        width: 640, height: 768, approved: true, credit: 'AI-generated, member-approved.',
+        crop: { left: 160, top: 32, width: 320, height: 320 },
+      },
+    },
+    {
+      id: 'jonart-bajraktari', name: 'Jonart Bajraktari', coFounder: true, linkedin: 'https://www.linkedin.com/in/jonartb/',
+      avatar: {
+        src: '/images/team/jonart-bajraktari-goatee-headshot-ai.webp', alt: 'Mii-style portrait of Jonart Bajraktari with a goatee.',
+        width: 640, height: 640, approved: true, credit: 'AI-generated, member-approved.',
+        crop: { left: 0, top: 0, width: 640, height: 640 },
+      },
+    },
+    {
+      id: 'yassin-soliman', name: 'Yassin Soliman', linkedin: 'https://www.linkedin.com/in/yassinsoliman/',
+      avatar: {
+        src: '/images/team/yassin-soliman-ai.webp', alt: 'Mii-style portrait of Yassin Soliman.',
+        width: 640, height: 768, approved: true, credit: 'AI-generated, member-approved.',
+        crop: { left: 160, top: 32, width: 320, height: 320 },
+      },
+    },
+    {
+      id: 'mujtaba-zia', name: 'Mujtaba Zia', linkedin: 'https://www.linkedin.com/in/mujtaba-zia/',
+      avatar: {
+        src: '/images/team/mujtaba-zia-ai.webp', alt: 'Mii-style portrait of Mujtaba Zia.',
+        width: 640, height: 768, approved: true, credit: 'AI-generated, member-approved.',
+        crop: { left: 160, top: 32, width: 320, height: 320 },
+      },
+    },
+    {
+      id: 'saifullah-asad', name: 'Saifullah Asad', linkedin: 'https://www.linkedin.com/in/saifasad/',
+      avatar: {
+        src: '/images/team/saifullah-asad-front-headshot-ai.webp', alt: 'Mii-style portrait of Saifullah Asad.',
+        width: 640, height: 640, approved: true, credit: 'AI-generated, member-approved.',
+        crop: { left: 0, top: 0, width: 640, height: 640 },
+      },
+    },
   ],
   divisions: [
     {
       id: 'embedded-hardware', name: 'Embedded Hardware',
       description: 'The electronics that bring a handheld to life.',
-      work: ['Circuit design and component selection', 'Board bring-up and electrical testing', 'Working with software and mechanical design'],
+      work: ['Custom PCB design, schematic capture and board layout', 'Component selection, board bring-up and electrical testing', 'Working with software and mechanical design'],
     },
     {
       id: 'embedded-software', name: 'Embedded Software',
       description: 'The connection between the hardware and the games.',
-      work: ['Firmware and hardware interfaces', 'Exploring Zephyr, subject to hardware selection', 'Input, display and system integration'],
+      work: ['Firmware, board support and device drivers', 'Exploring Zephyr RTOS, subject to hardware selection', 'Hardware APIs, input, display and system integration'],
     },
     {
       id: 'game-design', name: 'Game Design',
@@ -39,7 +76,7 @@ export const club = clubSchema.parse({
     {
       id: 'mechanical', name: 'Mechanical',
       description: 'How it fits together. How it feels in your hands.',
-      work: ['Enclosure CAD and control layout', 'Physical prototyping and fit', 'Integrating the electronics into the shell'],
+      work: ['Enclosure CAD, control layout and assembly', 'Physical prototyping, fit and manufacturability', 'Integrating the electronics into the shell'],
     },
     {
       id: 'business', name: 'Business',

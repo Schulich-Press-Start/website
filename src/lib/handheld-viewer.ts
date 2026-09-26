@@ -58,6 +58,7 @@ export async function mountHandheld(container: HTMLElement, options: ViewerOptio
 
   const originalMaterials = new Map<THREE.Mesh, THREE.Material | THREE.Material[]>();
   const conceptMaterials: THREE.Material[] = [];
+  const shellMaterials: THREE.MeshStandardMaterial[] = [];
   const inspectionMaterials: THREE.Material[] = [];
   let screen: THREE.Mesh | undefined;
   model.traverse((object) => {
@@ -66,10 +67,11 @@ export async function mountHandheld(container: HTMLElement, options: ViewerOptio
     const materials = Array.isArray(object.material) ? object.material : [object.material];
     const styled = materials.map((original) => {
       const material = (original as THREE.MeshStandardMaterial).clone();
-      if (original.name === 'mattealuminum') {
+      if (original.name === 'mattealuminum' || original.name === 'defaultplastic') {
         material.color.set('#7543b9');
         material.metalness = 0.16;
         material.roughness = 0.33;
+        shellMaterials.push(material);
       } else if (original.name === 'glossyrubber') {
         material.color.set('#e48c3d');
         material.metalness = 0.28;
@@ -136,6 +138,12 @@ export async function mountHandheld(container: HTMLElement, options: ViewerOptio
   let conceptEnabled = true;
   let inspecting = false;
   let screenProgress = 1;
+  const applyMaterials = () => {
+    for (const [mesh, original] of originalMaterials) {
+      mesh.userData.inspectionLines.visible = inspecting;
+      mesh.material = inspecting ? mesh.userData.inspectionMaterials : conceptEnabled ? mesh.userData.conceptMaterials : original;
+    }
+  };
   const drawDisplay = (progress = 1) => {
     screenProgress = progress;
     displayContext.fillStyle = '#151222';
@@ -308,17 +316,24 @@ export async function mountHandheld(container: HTMLElement, options: ViewerOptio
     setInspection(value: boolean) {
       stop();
       inspecting = value;
-      for (const [mesh, original] of originalMaterials) {
-        mesh.userData.inspectionLines.visible = value;
-        mesh.material = value ? mesh.userData.inspectionMaterials : conceptEnabled ? mesh.userData.conceptMaterials : original;
-      }
+      applyMaterials();
       drawDisplay();
       render();
     },
     setConcept(concept: boolean) {
       stop();
       conceptEnabled = concept;
-      for (const [mesh, original] of originalMaterials) mesh.material = inspecting ? mesh.userData.inspectionMaterials : concept ? mesh.userData.conceptMaterials : original;
+      applyMaterials();
+      drawDisplay(screenProgress);
+      render();
+    },
+    setShellColor(value: string) {
+      if (!/^#[\da-f]{6}$/i.test(value)) return;
+      stop();
+      for (const material of shellMaterials) material.color.set(value);
+      conceptEnabled = true;
+      inspecting = false;
+      applyMaterials();
       drawDisplay(screenProgress);
       render();
     },

@@ -32,16 +32,22 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci
+      - name: Install locked console dependencies
+        run: npm ci --prefix .local/console-lab
       - name: Check types
         run: npm run check
       - name: Validate content and assets
         run: npm run test:unit
       - name: Build static website
         run: npm run build
+      - name: Build console comparison
+        run: node .local/console-lab/build.mjs
       - name: Install browser engines
         run: npx playwright install --with-deps chromium webkit
       - name: Test browser behavior and accessibility
         run: npm run test:e2e
+      - name: Test compiled console comparison
+        run: node .local/console-lab/verify-publish.mjs
       - name: Retain browser report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f

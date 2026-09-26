@@ -1,0 +1,19 @@
+{
+  "servers": {
+    "falMedia": {
+      "type": "http",
+      "url": "https://mcp.fal.ai/mcp",
+      "headers": {
+        "Authorization": "Bearer ${input:sps-fal-api-key}"
+      }
+    }
+  },
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "sps-fal-api-key",
+      "description": "fal.ai API key for SPS image/video generation. Enter it only in this secure VS Code prompt, never in chat.",
+      "password": true
+    }
+  ]
+}
