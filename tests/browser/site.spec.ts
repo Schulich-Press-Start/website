@@ -621,13 +621,27 @@ test('product tour, camera presets, screen and CAD inspection respond to input',
   const canvas = viewer.locator('canvas');
   const capture = async () => { await settledFrame(page); return canvas.evaluate((element) => (element as HTMLCanvasElement).toDataURL()); };
   const stop = viewer.getByRole('button', { name: 'Stop model animation' });
-  await viewer.getByRole('button', { name: 'Replay model animation' }).click();
-  await expect(stop).toBeEnabled();
-  const playingFrame = await capture();
-  await expect.poll(capture).not.toBe(playingFrame);
-  await viewer.getByRole('button', { name: 'Replay model animation' }).click();
-  await expect(stop).toBeEnabled();
-  await stop.click();
+  await expect(viewer.getByRole('button', { name: 'Replay model animation' })).toBeEnabled();
+  // software webgl can take over a second per frame and the intro is time based, so the
+  // replay and stop checks run inside the page instead of racing the animation from here
+  const playback = await viewer.evaluate((element) => new Promise<{ stopEnabled: boolean; animates: boolean; stoppable: boolean }>((resolve) => {
+    const canvas = element.querySelector('canvas')!;
+    const replay = element.querySelector<HTMLButtonElement>('[data-viewer-replay]')!;
+    const stopButton = [...element.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.getAttribute('aria-label') === 'Stop model animation')!;
+    replay.click();
+    const stopEnabled = !stopButton.disabled && element.dataset.playing === 'true';
+    const first = canvas.toDataURL();
+    const tick = () => {
+      const animates = canvas.toDataURL() !== first;
+      if (!animates && element.dataset.playing === 'true') { requestAnimationFrame(tick); return; }
+      replay.click();
+      const stoppable = !stopButton.disabled;
+      stopButton.click();
+      resolve({ stopEnabled, animates, stoppable });
+    };
+    requestAnimationFrame(tick);
+  }));
+  expect(playback).toEqual({ stopEnabled: true, animates: true, stoppable: true });
   await expect(viewer).toHaveAttribute('data-playing', 'false');
   const stoppedFrame = await capture();
   await canvas.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
