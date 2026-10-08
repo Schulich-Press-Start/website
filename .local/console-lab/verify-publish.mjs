@@ -182,16 +182,28 @@ try {
               await page.getByRole('button', { name: 'Show colour concept', exact: true }).click();
             }
             await open('crew');
-            await expect(page.locator('.crew-person')).toHaveCount(5);
-            for (const image of await page.locator('.crew-person img').all()) await image.evaluate(element => element.decode());
-            const jonart = page.getByRole('button', { name: 'Jonart Bajraktari', exact: true });
-            await expect(jonart.locator('img')).toHaveAttribute('src', '/media/jonart-bajraktari.png');
-            assert.equal(await jonart.locator('img').evaluate(image => image.naturalWidth), 640);
-            await jonart.click();
-            await expect(page.locator('.crew-profile')).toContainText('Embedded Hardware Lead');
-            await page.screenshot({ path: fileURLToPath(new URL(`${remote ? 'live' : 'built'}-${theme}-jonart-${engineName}-${size.name}.png`, screenshots)), animations: 'disabled' });
-            await page.getByRole('button', { name: 'Saifullah Asad', exact: true }).click();
-            await expect(page.locator('.crew-profile')).toContainText('Mechanical Lead');
+            if (theme === 'cartridge') {
+              await expect(page.locator('.team-cart')).toHaveCount(data.divisions.length);
+              const jonart = page.locator('.team-lead img');
+              await expect(jonart).toHaveAttribute('src', '/media/jonart-bajraktari.png');
+              await jonart.evaluate(element => element.decode());
+              assert.equal(await jonart.evaluate(image => image.naturalWidth), 640);
+              await expect(page.locator('.team-lead')).toContainText('Jonart Bajraktari');
+              await page.screenshot({ path: fileURLToPath(new URL(`${remote ? 'live' : 'built'}-${theme}-jonart-${engineName}-${size.name}.png`, screenshots)), animations: 'disabled' });
+              await page.locator('.team-cart', { hasText: 'Mechanical' }).click();
+              await expect(page.locator('.team-lead')).toContainText('Saifullah Asad');
+            } else {
+              await expect(page.locator('.crew-person')).toHaveCount(5);
+              for (const image of await page.locator('.crew-person img').all()) await image.evaluate(element => element.decode());
+              const jonart = page.getByRole('button', { name: 'Jonart Bajraktari', exact: true });
+              await expect(jonart.locator('img')).toHaveAttribute('src', '/media/jonart-bajraktari.png');
+              assert.equal(await jonart.locator('img').evaluate(image => image.naturalWidth), 640);
+              await jonart.click();
+              await expect(page.locator('.crew-profile')).toContainText('Embedded Hardware Lead');
+              await page.screenshot({ path: fileURLToPath(new URL(`${remote ? 'live' : 'built'}-${theme}-jonart-${engineName}-${size.name}.png`, screenshots)), animations: 'disabled' });
+              await page.getByRole('button', { name: 'Saifullah Asad', exact: true }).click();
+              await expect(page.locator('.crew-profile')).toContainText('Mechanical Lead');
+            }
             await page.keyboard.press('Escape');
             await open('handheld');
             const inspector = page.locator('.inspector-scene canvas');

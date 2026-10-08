@@ -6,13 +6,21 @@ export const site = siteSettingsSchema.parse({
   repositoryUrl: 'https://github.com/Schulich-Press-Start/website',
   instagramUrl: 'https://www.instagram.com/sps_ucalgary',
   linktreeUrl: 'https://linktr.ee/sps_ucalgary',
+  linkedinUrl: 'https://www.linkedin.com/company/schulich-press-start/',
   recruitmentStatus: 'recruiting',
   applicationUrl: 'https://docs.google.com/forms/d/1ivE8y-b9iFOp2NKrjTDpZ3uFLKTWS5FnDwUbDX5yA6g/viewform',
   publicContact: { approved: true, email: 'schulichpressstart@gmail.com' },
   sponsorProspectusUrl: null,
-  productionOrigin: null,
+  productionOrigin: 'https://schulichpressstart.ca',
+  // flip to true once the content checklist in docs/deployment.md is cleared
   indexable: false,
 });
+
+export const yearPlan = [
+  { title: 'Gen 1 handheld', detail: 'Our goal: a Game Boy-class handheld, built, manufactured and on sale by June 2027.' },
+  { title: 'Build a community', detail: 'Bring together students who want to make hardware, software and games.' },
+  { title: 'Get the name out', detail: 'Share the build in public and grow Schulich Press Start on campus.' },
+];
 
 export const club = clubSchema.parse({
   members: [
@@ -61,27 +69,27 @@ export const club = clubSchema.parse({
     {
       id: 'embedded-hardware', name: 'Embedded Hardware',
       description: 'The electronics that bring a handheld to life.',
-      work: ['Custom PCB design, schematic capture and board layout', 'Component selection, board bring-up and electrical testing', 'Working with software and mechanical design'],
+      work: ['Schematic capture and PCB design', 'Choosing the chip, screen and battery with Embedded Software', 'Power, charging and battery safety', 'Bringing up each board revision with Embedded Software'],
     },
     {
       id: 'embedded-software', name: 'Embedded Software',
       description: 'The connection between the hardware and the games.',
-      work: ['Firmware, board support and device drivers', 'Exploring Zephyr RTOS, subject to hardware selection', 'Hardware APIs, input, display and system integration'],
+      work: ['Zephyr RTOS firmware', 'Drivers for the screen, buttons, audio and storage', 'The launcher and system menu', 'An SDK and PC simulator for Game Design', 'Bluetooth multiplayer and emulator testing'],
     },
     {
       id: 'game-design', name: 'Game Design',
       description: 'Original games made for something you can hold.',
-      work: ['Game mechanics and playable experiments', 'Original art, sound and interaction', 'Playtesting alongside the handheld team'],
+      work: ['Game ideas and design', 'Art, animation, sound and music', 'Building games with the SPS SDK', 'Playtesting and polish'],
     },
     {
       id: 'mechanical', name: 'Mechanical',
       description: 'How it fits together. How it feels in your hands.',
-      work: ['Enclosure CAD, control layout and assembly', 'Physical prototyping, fit and manufacturability', 'Integrating the electronics into the shell'],
+      work: ['CAD case design', 'Button layout and feel', 'Fitting the board, screen and battery', '3D printing and iteration'],
     },
     {
       id: 'business', name: 'Business',
       description: 'The planning and partnerships behind the project.',
-      work: ['Sponsorship and partnerships', 'Project resources and budgeting', 'Supporting the team\'s long-term direction'],
+      work: ['Budget and spending', 'Sponsorship and outreach', 'Purchasing and tracking part costs', 'Partnerships'],
     },
     {
       id: 'communications', name: 'Communications',

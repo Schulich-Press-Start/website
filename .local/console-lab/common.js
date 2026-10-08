@@ -3,6 +3,7 @@ import { createSoundscape } from './audio.js';
 
 const glyphs = { Power, Volume2, VolumeX, Settings2, ArrowLeft, ArrowRight, ArrowUpRight, X, Users, Gamepad2, CircuitBoard, Box, BookOpen, Send, Maximize, RotateCcw, Play, Pause, Grid2X2, Check, Mail, SlidersHorizontal, Monitor, ChevronRight, Pipette, Sparkles, Plus };
 export const media = '/media/';
+export const siteMode = import.meta.env.VITE_SPS_SITE === 'true';
 export const currentSite = import.meta.env.VITE_SPS_CLASSIC_URL ?? 'http://127.0.0.1:4322';
 export const data = await fetch('/club.json').then(response => {
   if (!response.ok) throw new Error('Club data is unavailable.');
@@ -58,18 +59,18 @@ export function setup(theme, start, reset = () => {}) {
   document.body.dataset.theme = theme;
   document.body.dataset.motion = String(preferences.motion);
   document.querySelector('#system-tools').innerHTML = `
-    <a class="icon-button lab-link" href="/" aria-label="All prototypes" title="All prototypes">${icon('Grid2X2')}</a>
+    ${siteMode ? '' : `<a class="icon-button lab-link" href="/" aria-label="All prototypes" title="All prototypes">${icon('Grid2X2')}</a>`}
     <button class="icon-button" data-action="sound" aria-label="Mute sound" title="Mute sound" aria-pressed="true">${icon('Volume2')}</button>
     ${button('Settings2', 'settings', 'System settings')}
     ${button('Power', 'reboot', 'Return to boot screen')}`;
   document.querySelector('#boot').innerHTML = `
-    <div class="boot-top"><a href="/">${icon('ArrowLeft', 18)} Console lab</a><span>${concepts.find(item => item.id === theme).title}</span></div>
+    <div class="boot-top">${siteMode ? '<span>Student design club</span>' : `<a href="/">${icon('ArrowLeft', 18)} Console lab</a>`}<span>${concepts.find(item => item.id === theme).title}</span></div>
     <div class="boot-art" aria-hidden="true"><div class="boot-disc"><img src="/media/signature.png" alt="" /></div>${theme === 'cartridge' ? '' : '<div class="boot-stripe"></div>'}</div>
     <div class="boot-copy"><p class="boot-brand">Schulich Press Start</p><h1>${theme === 'signal' ? 'Something<br> starts here.' : theme === 'playroom' ? 'Good to<br> see you.' : 'Make room<br> for play.'}</h1>
       <div class="boot-progress" hidden><progress max="100" value="0" aria-label="Preparing console"></progress><span role="status">Loading artwork</span></div>
       <button class="boot-start" type="button" data-action="boot">${icon('Power', 22)}<span>Press start</span></button>
     </div>
-    <div class="boot-bottom"><span>University of Calgary</span><label class="sound-choice"><input type="checkbox" data-boot-sound checked /> Sound</label><a href="${currentSite}">Original website ${icon('ArrowUpRight', 15)}</a></div>`;
+    <div class="boot-bottom"><span>University of Calgary</span><label class="sound-choice"><input type="checkbox" data-boot-sound checked /> Sound</label>${siteMode ? `<a href="${data.site.instagramUrl}" target="_blank" rel="noopener noreferrer">Instagram ${icon('ArrowUpRight', 15)}</a>` : `<a href="${currentSite}">Original website ${icon('ArrowUpRight', 15)}</a>`}</div>`;
   document.querySelector('#boot').hidden = false;
   document.querySelector('#shell').inert = true;
   document.addEventListener('click', onAction);
@@ -151,7 +152,7 @@ async function boot() {
     booted = true;
     document.querySelector('[data-initial-focus]')?.focus({ preventScroll: true });
   } catch (error) {
-    progress.querySelector('span').textContent = 'Unable to start. Try again, or open the original website.';
+    progress.querySelector('span').textContent = siteMode ? 'Unable to start. Refresh the page to try again.' : 'Unable to start. Try again, or open the original website.';
     start.disabled = false;
     console.error(error);
   }
@@ -208,14 +209,85 @@ function openSettings() {
     <label><span>Sound level</span><input aria-label="Sound level" type="range" min="0" max="30" value="${Math.round(preferences.volume * 100)}" data-setting="volume" /></label>
     <label><span>Animation</span><input type="checkbox" data-setting="motion" ${preferences.motion ? 'checked' : ''} /></label>
     <button type="button" class="command" data-action="fullscreen">${icon('Maximize')} Fullscreen</button></div>
-    <nav class="concept-switch" aria-label="Switch prototype">${concepts.map(item => `<a href="/${item.id}/" ${activeTheme === item.id ? 'aria-current="page"' : ''}>${item.title}${icon('ArrowRight', 18)}</a>`).join('')}</nav>
-    <a class="panel-link" href="${currentSite}">Original SPS website ${icon('ArrowUpRight', 18)}</a>`, 'settings-panel');
+    ${siteMode ? `<nav class="concept-switch" aria-label="Find SPS">${socialLinks().map(link => `<a href="${link.href}" ${link.external ? 'target="_blank" rel="noopener noreferrer"' : ''}>${link.label}${icon('ArrowUpRight', 18)}</a>`).join('')}</nav>` : `<nav class="concept-switch" aria-label="Switch prototype">${concepts.map(item => `<a href="/${item.id}/" ${activeTheme === item.id ? 'aria-current="page"' : ''}>${item.title}${icon('ArrowRight', 18)}</a>`).join('')}</nav>
+    <a class="panel-link" href="${currentSite}">Original SPS website ${icon('ArrowUpRight', 18)}</a>`}`, 'settings-panel');
   dialog.querySelector('[data-setting="sound"]').addEventListener('change', event => setSound(event.target.checked));
   dialog.querySelector('[data-setting="volume"]').addEventListener('input', event => { preferences.volume = Number(event.target.value) / 100; soundscape.setVolume(preferences.volume); });
   dialog.querySelector('[data-setting="motion"]').addEventListener('change', event => { preferences.motion = event.target.checked; applyPreferences(); });
 }
 
+function socialLinks() {
+  return [
+    data.site.instagramUrl && { label: 'Instagram @sps_ucalgary', href: data.site.instagramUrl, external: true },
+    data.site.linkedinUrl && { label: 'LinkedIn', href: data.site.linkedinUrl, external: true },
+    data.site.publicContact?.email && { label: data.site.publicContact.email, href: `mailto:${data.site.publicContact.email}` },
+  ].filter(Boolean);
+}
+
+// colours and codes are presentation only, team facts come from club.json
+const teamLooks = {
+  'embedded-hardware': { colour: '#784ac3', code: 'SPS-01', icon: 'CircuitBoard' },
+  'embedded-software': { colour: '#3f78a8', code: 'SPS-02', icon: 'SlidersHorizontal' },
+  'game-design': { colour: '#d95340', code: 'SPS-03', icon: 'Gamepad2' },
+  mechanical: { colour: '#3f8a6f', code: 'SPS-04', icon: 'Box' },
+  business: { colour: '#c98a12', code: 'SPS-05', icon: 'BookOpen' },
+  communications: { colour: '#c4507a', code: 'SPS-06', icon: 'Send' },
+};
+
+function teamLead(divisionId) {
+  const membership = data.memberships.find(item => item.divisionId === divisionId && item.role === 'lead');
+  return membership && data.members.find(member => member.id === membership.memberId);
+}
+
+function openTeams() {
+  const president = data.members.find(member => member.id === data.memberships.find(item => item.role === 'president')?.memberId);
+  const rack = data.divisions.map((division, index) => {
+    const look = teamLooks[division.id] ?? { colour: '#784ac3', code: `SPS-0${index + 1}`, icon: 'Box' };
+    const lead = teamLead(division.id);
+    return `<button type="button" class="team-cart" data-team="${index}" aria-pressed="${index === 0}" style="--cart:${look.colour}"><span class="team-cart-top" aria-hidden="true">${icon(look.icon, 18)}</span><span class="team-cart-label"><strong>${escapeHtml(division.name)}</strong><span><span>${lead ? `Lead: ${escapeHtml(lead.name.split(' ')[0])}` : 'Recruiting'}</span><span aria-hidden="true">${look.code.slice(4)}</span></span></span><span class="team-cart-pins" aria-hidden="true"></span></button>`;
+  }).join('');
+  const plan = (data.yearPlan ?? []).map(item => `<li><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.detail)}</span></li>`).join('');
+  const dialog = showPanel('Meet the teams.', 'SPS / Teams', `
+    <p class="teams-intro">Six teams, one handheld. Pick a cartridge to see what each team works on.</p>
+    <div class="team-rack" role="group" aria-label="Teams">${rack}</div>
+    <section class="team-detail" aria-live="polite"></section>
+    <div class="team-footer">
+      ${president ? `<div class="team-president"><img src="/media/${president.id}.png" alt="" width="64" height="64" /><div><span>President${president.coFounder ? ' / Co-Founder' : ''}</span><strong>${escapeHtml(president.name)}</strong></div><a class="icon-button" href="${president.linkedin}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(president.name)} on LinkedIn" title="LinkedIn">${icon('ArrowUpRight', 18)}</a></div>` : ''}
+      ${plan ? `<div class="team-plan"><h3>This year</h3><ol>${plan}</ol></div>` : ''}
+    </div>`, 'teams-panel');
+  const detail = dialog.querySelector('.team-detail');
+  const select = (index, fromUser = false) => {
+    const division = data.divisions[index];
+    const look = teamLooks[division.id] ?? { colour: '#784ac3', code: `SPS-0${index + 1}` };
+    const lead = teamLead(division.id);
+    dialog.querySelectorAll('[data-team]').forEach(item => item.setAttribute('aria-pressed', String(Number(item.dataset.team) === index)));
+    detail.style.setProperty('--cart', look.colour);
+    detail.dataset.division = division.id;
+    detail.innerHTML = `<div class="team-detail-copy"><span>${look.code} / Team</span><h3>${escapeHtml(division.name)}</h3><p>${escapeHtml(division.description)}</p><h4>What we work on</h4><ul>${division.work.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>
+      <div class="team-lead">${lead
+        ? `<img src="/media/${lead.id}.png" alt="" width="96" height="96" /><span>Team lead${lead.coFounder ? ' / Co-Founder' : ''}</span><strong>${escapeHtml(lead.name)}</strong><a class="command" href="${lead.linkedin}" target="_blank" rel="noopener noreferrer">LinkedIn ${icon('ArrowUpRight', 18)}</a>`
+        : `<span class="program-status">Recruiting now</span><strong>Lead to be announced</strong><p>We are looking for ${escapeHtml(division.name)} members this year.</p>${data.site.applicationUrl ? `<a class="command primary" href="${data.site.applicationUrl}" target="_blank" rel="noopener noreferrer">Apply to SPS ${icon('ArrowUpRight', 18)}</a>` : ''}`}</div>`;
+    if (fromUser && innerWidth <= 900) detail.scrollIntoView({ block: 'nearest', behavior: preferences.motion ? 'smooth' : 'instant' });
+  };
+  const rackElement = dialog.querySelector('.team-rack');
+  rackElement.addEventListener('click', event => {
+    const control = event.target.closest('[data-team]');
+    if (!control) return;
+    select(Number(control.dataset.team), true);
+    tone();
+  });
+  rackElement.addEventListener('keydown', event => {
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key) || !event.target.matches('[data-team]')) return;
+    const controls = [...rackElement.querySelectorAll('[data-team]')];
+    const next = controls[(controls.indexOf(event.target) + (['ArrowRight', 'ArrowDown'].includes(event.key) ? 1 : -1) + controls.length) % controls.length];
+    next.focus();
+    event.preventDefault();
+  });
+  select(0);
+}
+
 export async function openProgram(id) {
+  if (id === 'teams') return openTeams();
   const program = programs.find(item => item.id === id);
   if (!program) return;
   if (id === 'crew') {
@@ -230,8 +302,8 @@ export async function openProgram(id) {
     dialog.querySelectorAll('[data-person]').forEach(control => control.addEventListener('click', () => { select(Number(control.dataset.person)); tone(); }));
     select(0);
   }
-  if (id === 'work') showPanel('Our divisions.', 'SPS / Divisions', `<div class="division-list">${data.divisions.map(division => `<details><summary>${escapeHtml(division.name)}${icon('ChevronRight', 18)}</summary><p>${escapeHtml(division.description)}</p><ul>${division.work.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></details>`).join('')}</div><a class="command" href="${currentSite}/join/">Join the team ${icon('ArrowUpRight', 18)}</a>`);
-  if (id === 'journal') showPanel('Project updates.', 'SPS / Project', `<div class="story"><p class="large-copy">Two working prototypes.<br>A Game Boy-inspired handheld is next.</p><p>Our goal is to complete the handheld by June, bringing together custom PCB design, embedded firmware and mechanical enclosure design.</p><div class="milestone"><span>Future iteration</span><strong>2027-2028</strong><p>Schulich on a Chip is working on student-designed chips for a future SPS handheld.</p></div><p>No build logs have been published yet.</p><a class="panel-link" href="${currentSite}/handheld/">Explore the project ${icon('ArrowUpRight', 18)}</a></div>`);
+  if (id === 'work') showPanel('Our divisions.', 'SPS / Divisions', `<div class="division-list">${data.divisions.map(division => `<details><summary>${escapeHtml(division.name)}${icon('ChevronRight', 18)}</summary><p>${escapeHtml(division.description)}</p><ul>${division.work.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></details>`).join('')}</div><a class="command" href="${siteMode ? data.site.applicationUrl : `${currentSite}/join/`}" ${siteMode ? 'target="_blank" rel="noopener noreferrer"' : ''}>Join the team ${icon('ArrowUpRight', 18)}</a>`);
+  if (id === 'journal') showPanel('Project updates.', 'SPS / Project', `<div class="story"><p class="large-copy">Two working prototypes.<br>A Game Boy-inspired handheld is next.</p><p>Our goal is to complete the handheld by June, bringing together custom PCB design, embedded firmware and mechanical enclosure design.</p><div class="milestone"><span>Future iteration</span><strong>2027-2028</strong><p>Schulich on a Chip is working on student-designed chips for a future SPS handheld.</p></div><p>No build logs have been published yet.</p>${siteMode ? '' : `<a class="panel-link" href="${currentSite}/handheld/">Explore the project ${icon('ArrowUpRight', 18)}</a>`}</div>`);
   if (id === 'join') showPanel('Join the team.', 'SPS / Recruiting', `<div class="join-program"><img src="/media/handheld.webp" alt="SPS handheld colour concept" /><div><span class="program-status">Recruiting now</span><p class="large-copy">Build with us.</p><p>Help build the next handheld through electronics, embedded software, mechanical design, games, business or communications.</p><a class="command primary" href="${data.site.applicationUrl}" target="_blank" rel="noopener noreferrer">Apply to SPS ${icon('ArrowUpRight', 18)}</a><a class="panel-link" href="mailto:${data.site.publicContact.email}">${icon('Mail', 18)} Email SPS</a></div></div>`);
   if (id === 'handheld') {
     const dialog = showPanel('Make it yours.', 'SPS / Colour concept', `<div class="inspector-scene"><canvas aria-label="SPS handheld model" tabindex="0"></canvas><img class="model-fallback" src="/media/handheld.webp" alt="SPS handheld enclosure concept" /></div><div class="inspector-tools"><div class="rotation-buttons">${button('ArrowLeft', 'model-left', 'Rotate handheld left')}${button('RotateCcw', 'model-reset', 'Reset handheld')}${button('ArrowRight', 'model-right', 'Rotate handheld right')}</div><label class="colour-input">${icon('Pipette', 18)} Shell <input type="color" value="#784ac3" aria-label="Shell colour" /></label><span>Actual geometry / illustrative screen</span></div>`, 'hardware-panel');

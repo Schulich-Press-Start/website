@@ -311,18 +311,27 @@ for (const [engineName, engine] of [['chromium', chromium], ['webkit', webkit]])
           if (theme === 'pocket') await verifyPocket(page, label, viewport);
           if (viewport.name !== 'small-phone' && (viewport.name !== 'tablet' || theme === 'cartridge')) {
             await openProgram(page, theme, 'crew');
-            await expect(page.locator('.crew-person')).toHaveCount(5);
-            const jonart = page.getByRole('button', { name: 'Jonart Bajraktari', exact: true });
-            await expect.poll(() => jonart.locator('img').evaluate(image => image.complete && image.naturalWidth === 640)).toBe(true);
-            await jonart.click();
-            await expect(page.locator('.crew-profile')).toContainText('Embedded Hardware Lead');
-            const palette = await page.locator('.crew-person img').evaluateAll(images => images.map(image => getComputedStyle(image).backgroundColor));
-            assert.equal(new Set(palette).size, 5);
-            portraitPalettes.set(theme, palette.join('|'));
-            await page.getByRole('button', { name: 'Saifullah Asad', exact: true }).click();
-            await expect(page.locator('.crew-profile')).toContainText('Mechanical Lead');
-            await scan(page, `${label} crew`);
-            await capture(page, `${theme}-crew-${engineName}-${viewport.name}.png`, false);
+            if (theme === 'cartridge') {
+              await expect(page.locator('.team-cart')).toHaveCount(6);
+              await expect(page.locator('.team-lead')).toContainText('Jonart Bajraktari');
+              await page.locator('.team-cart', { hasText: 'Business' }).click();
+              await expect(page.locator('.team-lead')).toContainText('Lead to be announced');
+              await scan(page, `${label} teams`);
+              await capture(page, `${theme}-teams-${engineName}-${viewport.name}.png`, false);
+            } else {
+              await expect(page.locator('.crew-person')).toHaveCount(5);
+              const jonart = page.getByRole('button', { name: 'Jonart Bajraktari', exact: true });
+              await expect.poll(() => jonart.locator('img').evaluate(image => image.complete && image.naturalWidth === 640)).toBe(true);
+              await jonart.click();
+              await expect(page.locator('.crew-profile')).toContainText('Embedded Hardware Lead');
+              const palette = await page.locator('.crew-person img').evaluateAll(images => images.map(image => getComputedStyle(image).backgroundColor));
+              assert.equal(new Set(palette).size, 5);
+              portraitPalettes.set(theme, palette.join('|'));
+              await page.getByRole('button', { name: 'Saifullah Asad', exact: true }).click();
+              await expect(page.locator('.crew-profile')).toContainText('Mechanical Lead');
+              await scan(page, `${label} crew`);
+              await capture(page, `${theme}-crew-${engineName}-${viewport.name}.png`, false);
+            }
             await page.getByRole('button', { name: 'Close program' }).click();
             await expect(page.locator('#panel')).not.toBeVisible();
             await openProgram(page, theme, 'join');
@@ -393,7 +402,7 @@ for (const [engineName, engine] of [['chromium', chromium], ['webkit', webkit]])
       await expect(page.locator('#panel')).not.toBeVisible();
       await page.locator('.load-cartridge').dispatchEvent('click');
       await expect(canvas).toHaveAttribute('data-cartridge-state', 'inserted');
-      await expect(page.locator('.crew-grid')).toBeVisible();
+      await expect(page.locator('.team-rack')).toBeVisible();
       const frames = await page.evaluate(() => window.cartridgeFrames);
       for (const phase of ['lifting', 'aligning', 'inserting', 'inserted']) {
         assert(frames[phase], `${engineName}: ${phase} observed`);
@@ -418,7 +427,7 @@ for (const [engineName, engine] of [['chromium', chromium], ['webkit', webkit]])
       await expect(page.locator('body')).toHaveAttribute('data-audio-state', 'running');
       await page.emulateMedia({ reducedMotion: 'reduce' });
       await page.getByRole('button', { name: 'Load cartridge', exact: true }).click();
-      await expect(page.locator('.crew-grid')).toBeVisible();
+      await expect(page.locator('.team-rack')).toBeVisible();
       report.push({ label: `${engineName}/cartridge/animated-sequence-and-audio`, passed: true });
       console.log(`PASS ${engineName}/cartridge/animated-sequence-and-audio`);
     } finally { await context.close(); }
@@ -467,7 +476,7 @@ for (const [engineName, engine] of [['chromium', chromium], ['webkit', webkit]])
   } finally { await browser.close(); }
 }
 
-assert.equal(new Set(portraitPalettes.values()).size, themes.length);
+assert.equal(new Set(portraitPalettes.values()).size, themes.filter(theme => theme !== 'cartridge').length);
 for (const path of ['/.env.local', '/.local/portrait-approvals.md', '/@fs/Users/ysoli/website/.env.local']) {
   const response = await fetch(new URL(path, origin));
   assert([403, 404].includes(response.status), `Private source route exposed: ${path}`);

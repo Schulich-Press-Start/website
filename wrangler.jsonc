@@ -1,0 +1,14 @@
+{
+  "$schema": "https://unpkg.com/wrangler@4.148.0/config-schema.json",
+  // static assets only, built by `node .local/console-lab/build.mjs --site`
+  "name": "sps-website",
+  "account_id": "81148deb29ed9d004f91fd65f6a7630f",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  "preview_urls": true,
+  "assets": {
+    "directory": "./dist-site",
+    "not_found_handling": "404-page",
+    "html_handling": "auto-trailing-slash"
+  }
+}

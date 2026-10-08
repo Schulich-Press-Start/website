@@ -1,5 +1,6 @@
 node_modules/
 dist/
+dist-site/
 .astro/
 .local/*
 !.local/console-lab/
@@ -19,6 +20,7 @@ dist/
 !.local/console-lab/stage.js
 !.local/console-lab/verify.mjs
 !.local/console-lab/verify-publish.mjs
+!.local/console-lab/verify-site.mjs
 !.local/console-lab/cartridge/
 .local/console-lab/cartridge/*
 !.local/console-lab/cartridge/index.html

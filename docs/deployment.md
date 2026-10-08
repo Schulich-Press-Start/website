@@ -1,6 +1,50 @@
 # Deployment
 
-## Live Feedback Site
+## Public Website (schulichpressstart.ca)
+
+The public website is the Cartridge Club concept, served from **https://schulichpressstart.ca** by the Cloudflare Worker `sps-website` (static assets only, Workers Free plan, no server code). The domain is registered through Cloudflare Registrar in the club account (`schulichpressstart@gmail.com`), and its DNS zone is on Cloudflare.
+
+| Piece | Where |
+| --- | --- |
+| Build | `node .local/console-lab/build.mjs --site` writes `dist-site/` |
+| Checks | `node .local/console-lab/verify-site.mjs` (local static server that applies `_headers`, `_redirects` and the 404 page) |
+| Host config | [wrangler.jsonc](../wrangler.jsonc) |
+| Deploys | the `deploy` job in [CI](../.github/workflows/ci.yml), after every check passes |
+| Production | push to `main` runs `wrangler deploy` with the exact `dist-site` artifact CI tested |
+| Pull request previews | same-repo PRs run `wrangler versions upload --preview-alias pr-<number>`; the URL is in the job summary, e.g. `https://pr-<number>-sps-website.schulichpressstart.workers.dev` |
+| Secret | `CLOUDFLARE_API_TOKEN` repository secret: an account-owned token limited to Workers Scripts Write and Account Settings Read |
+
+The site build compiles only the Cartridge page (moved to `/index.html`) and the 404 page. It drops the prototype launcher, the other concepts, the concept switcher and every link to the Vercel sites, and fails if any of them leak into the output. `_headers` carries the same CSP, frame, no-sniff, referrer and permissions policies as [vercel.json](../vercel.json), plus immutable caching for hashed `/assets/`. `_redirects` sends the old `/cartridge/` path to `/`.
+
+### Domain And DNS
+
+These live in the Cloudflare dashboard, not in Git. Records, as configured on 2026-10-08:
+
+| Type | Name | Content | Proxy | Purpose |
+| --- | --- | --- | --- | --- |
+| AAAA | `schulichpressstart.ca` | `100::` | proxied, read-only | created by the Worker Custom Domain |
+| A | `www` | `192.0.2.0` | proxied | placeholder so the redirect rule can run |
+
+- Worker Custom Domain: `schulichpressstart.ca` → `sps-website` (production). Cloudflare issues and renews the certificate.
+- Redirect rule "Redirect www to apex": `www.schulichpressstart.ca/*` → `https://schulichpressstart.ca/*`, 301, query string kept.
+- Always Use HTTPS: on.
+- The custom domain is attached in the dashboard, so `wrangler.jsonc` has no `routes` and the deploy token needs no zone permissions. A unit test keeps it that way.
+
+### Indexing Switch
+
+The site ships with noindex: `<meta name="robots">`, `X-Robots-Tag: noindex, nofollow` and a disallow-all `robots.txt`. Once the content checklist below is cleared, flip `indexable` to `true` in [club settings](../src/data/club.ts). That one line removes all three from both the public website and the Astro build. Canonical and `og:url` tags already use `https://schulichpressstart.ca`.
+
+Before flipping it:
+
+1. Resolve the private content checklist: member permissions, confirmed academic year, approved application/contact destinations and policy copy.
+2. Confirm the team copy, the year plan wording ("on sale by June 2027") and the recruiting state for Business and Communications.
+3. Check the PR preview on a phone and a laptop.
+
+### Rollback
+
+Every deploy is a Worker version. In the dashboard, open Workers & Pages → `sps-website` → Deployments and roll back to an earlier version, or run `npx wrangler rollback` with an authorised token. Reverting the commit on `main` also redeploys the previous site.
+
+## Vercel Feedback Sites
 
 The user authorised Vercel deployment for club feedback on 2026-09-15, made the console concepts the main feedback experience on 2026-09-16, and subsequently authorised adding Pocket OS. The four-concept comparison is live at **https://schulich-press-start.vercel.app** in the `schulich-press-start` project under `yassins-projects-11732a5e`.
 
@@ -66,7 +110,7 @@ The main alias currently points to `schulich-press-start-8d6qwq1dw-yassins-proje
 
 Prior comparisons `Gop8DS4Gn4dJxmeNy1HmKr3bxCBZ` and `7WnYoqRearxmzd2Dz4GEEquVQBcz` remain available, as do classic `2X1axHe2CuF92qBKjghjGu6ovQrK` and the earlier three-concept deployment `DqcTX7jrHbYeNdMJiGY1GyBXNYit`. To restore a prior experience after approval, reassign only the intended alias; do not delete the retained versions.
 
-The user authorised a GitHub checkpoint of the current work on 2026-09-25. The checkpoint includes only the reviewed console source and required public inputs from `.local/console-lab/`, not the private folder as a whole. Cached dependencies, Vercel credentials and output, unselected screenshots, approval records, photographs and generation logs remain excluded. GitHub CI builds and checks both applications but does not deploy them; the live aliases still require the explicit workflow above.
+The user authorised a GitHub checkpoint of the current work on 2026-09-25. The checkpoint includes only the reviewed console source and required public inputs from `.local/console-lab/`, not the private folder as a whole. Cached dependencies, Vercel credentials and output, unselected screenshots, approval records, photographs and generation logs remain excluded. GitHub CI builds and checks both applications. It deploys only the public website to Cloudflare; the Vercel aliases still require the explicit workflow above.
 
 ## Original Astro Settings
 
@@ -111,53 +155,6 @@ The initial manifest contained 74 files, about 3.4 MB, with no private paths. Ve
 
 Future deployments and changes to indexing, access controls, domains, plans or automatic Git integration need to remain within the user's authorised scope. A fully indexed release would require both approved `site.productionOrigin`/`site.indexable` settings and deliberate removal of the Vercel noindex header. The CLI was upgraded to 59.18.0 and automatic CLI updates enabled at the user's request.
 
-## Cloudflare Alternative
-
-Cloudflare Pages remains an optional static host. No Cloudflare project or domain has been configured. The settings below are retained for a separately authorised migration, not used by the current Vercel site.
-
-### Before Release
-
-1. Resolve the private content checklist: member permissions, confirmed academic year, approved application/contact destinations, policy copy and any desired game/journal content.
-2. Review the six public routes, all link destinations, mobile navigation and static placeholders. Do not publish unknown facts to make pages appear complete.
-3. Set the separately approved HTTPS `productionOrigin` and `indexable: true` in [club settings](../src/data/club.ts) only for an authorised release. The default is noindex and disallow-all robots. These settings do not provide access control; use Cloudflare Access for private review deployments if needed.
-4. Run `npm ci`, `npm run check`, `npm run test:unit`, `npm run build` and `npm run test:e2e` on Node 24. Review screenshots. A static build contains only approved published journal routes and confirmed archived team years.
-
-### Pages Settings
-
-After authorisation, create a Pages project through the Cloudflare dashboard and connect only the intended repository. Choose the project name explicitly; no `pages.dev` name or custom domain is assumed here.
-
-| Setting | Value |
-| --- | --- |
-| Framework | Astro / static |
-| Repository | `Schulich-Press-Start/website` |
-| Production branch | `main`, subject to release approval |
-| Root directory | Repository root |
-| Build command | `npm ci && npm run check && npm run test:unit && npm run build` |
-| Build output | `dist` |
-| Build image | v3 |
-| `NODE_VERSION` | `24` |
-| `SKIP_DEPENDENCY_INSTALL` | `1` |
-
-`.nvmrc` also specifies Node 24. Pages does not use `package.json` engines as its runtime selector, so keep the explicit version setting. Use npm only, with the committed lockfile. Do not omit dev dependencies: the type checker, asset preparation and unit tests use them.
-
-No Cloudflare adapter, Pages Functions, worker bindings, database, runtime token or Wrangler configuration is needed for this static output. Images are optimised during the Node build. Do not switch to SSR merely to deploy this site.
-
-### Security And Caching
-
-[public/_headers](../public/_headers) supplies a self-only script CSP, clickjacking protection, no-sniff, referrer and permissions policies. Hashed Astro assets receive long-lived immutable caching. Small client scripts are emitted as external files to comply with CSP. Browser tests inject the same CSP into the local production preview; Astro's local preview does not itself implement Pages `_headers` semantics.
-
-Styles permit inline declarations used by generated assets. There are no forms, embeds, analytics or third-party browser requests. If introducing any of those, review CSP and privacy requirements deliberately instead of loosening the policy globally. Do not place secrets in site data, public assets, client environment variables, tracked approval notes or build logs.
-
-Preview builds should remain unindexed. Use Pages preview settings and/or separate build configuration to retain noindex if production indexing is later enabled. The current build-time setting applies to all outputs; do not assume the code automatically distinguishes Cloudflare preview and production.
-
-### CI And Release
-
-[CI workflow](../.github/workflows/ci.yml) installs the npm lockfile, type-checks, validates content/assets, builds, installs Chromium/WebKit and runs the browser suite. It uploads the test report for seven days and needs only repository read permission. The actions are pinned to the inspected stable v6 commit SHAs. The workflow does not deploy.
-
-If Git-based Pages automatic deployments are later enabled, pushes may deploy before GitHub checks finish. Use branch protection and an explicitly agreed release process; don't assume the CI workflow gates Cloudflare. A project administrator must configure these external controls after authorisation.
-
-After a Cloudflare deployment, verify actual HTTP headers, 404 status, generated asset URLs, fonts, mobile navigation and the production origin. Roll back using a previously approved Pages deployment if needed. No Cloudflare deployment or rollback has been exercised; the Vercel deployment was verified separately.
-
 ## Official References
 
 Checked on 2026-09-15 and 2026-09-16:
@@ -170,9 +167,11 @@ Checked on 2026-09-15 and 2026-09-16:
 - [Vercel Build Output API configuration](https://vercel.com/docs/build-output-api/configuration)
 - [Vercel prebuilt deployment](https://vercel.com/docs/cli/deploy#prebuilt)
 - [Vercel alias assignment](https://vercel.com/docs/cli/alias)
-- [Cloudflare Pages Astro guide](https://developers.cloudflare.com/pages/framework-guides/deploy-an-astro-site/)
-- [Pages build image and runtime overrides](https://developers.cloudflare.com/pages/configuration/build-image/)
-- [Pages custom headers](https://developers.cloudflare.com/pages/configuration/headers/)
+- [Workers static assets](https://developers.cloudflare.com/workers/static-assets/)
+- [Workers custom headers](https://developers.cloudflare.com/workers/static-assets/headers/) and [redirects](https://developers.cloudflare.com/workers/static-assets/redirects/)
+- [Workers custom domains](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/)
+- [Workers preview URLs](https://developers.cloudflare.com/workers/configuration/previews/)
+- [Redirect www to apex](https://developers.cloudflare.com/rules/url-forwarding/examples/redirect-www-to-root/)
 - [Playwright accessibility testing](https://playwright.dev/docs/accessibility-testing)
 
 The documentation helper's authenticated endpoint was unavailable; the official documentation pages were fetched directly. Versions were checked against the npm registry: Astro 7.3.2; TypeScript 6.0.3 because `@astrojs/check` 0.9.10 supports TypeScript 5/6, not the then-current TypeScript 7 major; Playwright 1.63.0; `@lucide/astro` 1.46.0 supports Astro 7. Full resolved versions are in the lockfile.
