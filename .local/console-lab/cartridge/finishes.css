@@ -132,3 +132,59 @@ body[data-cartridge-finish="purple"] .command.primary {
 @media (min-width: 601px) and (max-width: 900px) {
   .workbench-frame { height: 420px; }
 }
+/* v2: quieter unselected tabs so the picked cartridge reads first */
+body[data-cartridge-finish="purple"] .cartridge-tab {
+  background: #ffffff17;
+  color: #ffffff;
+  border-color: #ffffff3d;
+  box-shadow: 0 4px 0 #4c2c7c99;
+  backdrop-filter: blur(10px);
+}
+
+body[data-cartridge-finish="purple"] .cartridge-tab:hover {
+  background: #ffffff2b;
+}
+
+body[data-cartridge-finish="purple"] .cartridge-tab[aria-pressed="true"] {
+  background: #ffffff;
+  color: var(--workbench-button-ink);
+  border-color: #ffffff;
+  box-shadow: 0 4px 0 var(--cart);
+}
+
+body[data-cartridge-finish="purple"] .physical-stamp,
+body[data-cartridge-finish="purple"] .cartridge-kicker {
+  color: #ffffffdd;
+}
+
+/* the boot screen cartridge gets the same notched shell, grip ridges, label and contacts */
+body[data-cartridge-finish] .boot-disc {
+  border: 0;
+  border-radius: 16px 16px 10px 10px;
+  background:
+    repeating-linear-gradient(180deg, #ffffff 0 2px, #b9aec6 2px 3px, transparent 3px 7px) 1.8rem 1.5rem / 58% 2rem no-repeat,
+    linear-gradient(160deg, #f6f3f9, #dcd4e6);
+  clip-path: polygon(0 0, calc(100% - 3.4rem) 0, 100% 3.4rem, 100% 100%, 0 100%);
+  box-shadow: none;
+  filter: drop-shadow(0 12px 0 var(--workbench-shadow)) drop-shadow(20px 40px 40px #24153340);
+}
+
+body[data-cartridge-finish] .boot-disc::before {
+  inset: 4.6rem 1.7rem 6.4rem;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #784ac3 0 72%, #fbf8f2 72%);
+  box-shadow: 0 0 0 5px #cbc2d6, inset 0 2px 6px #24153333;
+}
+
+body[data-cartridge-finish] .boot-disc::after {
+  left: 14%;
+  width: 72%;
+  height: 2.2rem;
+  border-radius: 8px 8px 0 0;
+  background: repeating-linear-gradient(90deg, transparent 0 5px, #e3c06f 5px 15px, #b58b3b 15px 16px), #2a2234;
+}
+
+body[data-cartridge-finish] .boot-disc img {
+  width: 46%;
+  margin-top: -2.6rem;
+}

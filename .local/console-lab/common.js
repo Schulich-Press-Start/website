@@ -129,7 +129,7 @@ async function boot() {
   tone('boot');
   const progress = document.querySelector('.boot-progress');
   progress.hidden = false;
-  const urls = ['/media/handheld.webp', '/media/logo-white.png', '/media/logo-dark.png', ...data.members.map(member => `/media/${member.id}.png`)];
+  const urls = [...(activeTheme === 'cartridge' ? ['/media/handheld-concept-front.webp'] : ['/media/handheld.webp']), '/media/logo-white.png', '/media/logo-dark.png', ...data.members.map(member => `/media/${member.id}.png`)];
   let completed = 0;
   const update = label => {
     progress.querySelector('progress').value = Math.round(completed / (urls.length + 1) * 100);
@@ -224,6 +224,10 @@ function socialLinks() {
   ].filter(Boolean);
 }
 
+// shared cartridge pieces, the grip ridges and the embossed start arrow from the logo
+const cartridgeGrip = '<span class="team-cart-grip" aria-hidden="true"></span>';
+const cartridgeMark = '<span class="team-cart-mark" aria-hidden="true"><svg viewBox="0 0 10 10" width="8" height="8"><path d="M2 1l7 4-7 4z" fill="currentColor"/></svg>SPS</span>';
+
 // colours and codes are presentation only, team facts come from club.json
 const teamLooks = {
   'embedded-hardware': { colour: '#784ac3', code: 'SPS-01', icon: 'CircuitBoard' },
@@ -244,18 +248,20 @@ function openTeams() {
   const rack = data.divisions.map((division, index) => {
     const look = teamLooks[division.id] ?? { colour: '#784ac3', code: `SPS-0${index + 1}`, icon: 'Box' };
     const lead = teamLead(division.id);
-    return `<button type="button" class="team-cart" data-team="${index}" aria-pressed="${index === 0}" style="--cart:${look.colour}"><span class="team-cart-top" aria-hidden="true">${icon(look.icon, 18)}</span><span class="team-cart-label"><strong>${escapeHtml(division.name)}</strong><span><span>${lead ? `Lead: ${escapeHtml(lead.name.split(' ')[0])}` : 'Recruiting'}</span><span aria-hidden="true">${look.code.slice(4)}</span></span></span><span class="team-cart-pins" aria-hidden="true"></span></button>`;
+    return `<button type="button" class="team-cart" data-team="${index}" aria-pressed="${index === 0}" style="--cart:${look.colour}"><span class="team-cart-body">${cartridgeGrip}<span class="team-cart-label"><span class="team-cart-band" aria-hidden="true">${icon(look.icon, 16)}<span>${look.code}</span></span><strong>${escapeHtml(division.name)}</strong><span class="team-cart-meta">${lead ? `Lead: ${escapeHtml(lead.name.split(' ')[0])}` : 'Recruiting'}</span></span>${cartridgeMark}<span class="team-cart-pins" aria-hidden="true"></span></span></button>`;
   }).join('');
+  const handheld = `<div class="team-console" aria-hidden="true"><span class="team-console-cart"><span></span></span><img src="/media/handheld-concept-front.webp" alt="" width="300" height="440" /><span class="team-console-screen"><span data-console-code></span><strong data-console-name></strong></span></div>`;
   const plan = (data.yearPlan ?? []).map(item => `<li><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.detail)}</span></li>`).join('');
   const dialog = showPanel('Meet the teams.', 'SPS / Teams', `
     <p class="teams-intro">Six teams, one handheld. Pick a cartridge to see what each team works on.</p>
     <div class="team-rack" role="group" aria-label="Teams">${rack}</div>
-    <section class="team-detail" aria-live="polite"></section>
+    <section class="team-detail" aria-label="Selected team">${handheld}<div class="team-detail-body" aria-live="polite"></div></section>
     <div class="team-footer">
       ${president ? `<div class="team-president"><img src="/media/${president.id}.png" alt="" width="64" height="64" /><div><span>President${president.coFounder ? ' / Co-Founder' : ''}</span><strong>${escapeHtml(president.name)}</strong></div><a class="icon-button" href="${president.linkedin}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(president.name)} on LinkedIn" title="LinkedIn">${icon('ArrowUpRight', 18)}</a></div>` : ''}
       ${plan ? `<div class="team-plan"><h3>This year</h3><ol>${plan}</ol></div>` : ''}
     </div>`, 'teams-panel');
   const detail = dialog.querySelector('.team-detail');
+  const detailBody = detail.querySelector('.team-detail-body');
   const select = (index, fromUser = false) => {
     const division = data.divisions[index];
     const look = teamLooks[division.id] ?? { colour: '#784ac3', code: `SPS-0${index + 1}` };
@@ -263,7 +269,12 @@ function openTeams() {
     dialog.querySelectorAll('[data-team]').forEach(item => item.setAttribute('aria-pressed', String(Number(item.dataset.team) === index)));
     detail.style.setProperty('--cart', look.colour);
     detail.dataset.division = division.id;
-    detail.innerHTML = `<div class="team-detail-copy"><span>${look.code} / Team</span><h3>${escapeHtml(division.name)}</h3><p>${escapeHtml(division.description)}</p><h4>What we work on</h4><ul>${division.work.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>
+    detail.querySelector('[data-console-code]').textContent = look.code;
+    detail.querySelector('[data-console-name]').textContent = division.name;
+    // slide the picked cartridge into the handheld, skipped when animation is off
+    animate(detail.querySelector('.team-console-cart'), [{ transform: 'translateY(-46%)' }, { transform: 'translateY(-46%)', offset: 0.15 }, { transform: 'none' }], { duration: 560, easing: 'cubic-bezier(.3,.7,.3,1)' });
+    animate(detail.querySelector('.team-console-screen'), [{ opacity: 0 }, { opacity: 0, offset: 0.6 }, { opacity: 1 }], { duration: 700 });
+    detailBody.innerHTML = `<div class="team-detail-copy"><span>${look.code} / Team</span><h3>${escapeHtml(division.name)}</h3><p>${escapeHtml(division.description)}</p><h4>What we work on</h4><ul>${division.work.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>
       <div class="team-lead">${lead
         ? `<img src="/media/${lead.id}.png" alt="" width="96" height="96" /><span>Team lead${lead.coFounder ? ' / Co-Founder' : ''}</span><strong>${escapeHtml(lead.name)}</strong><a class="command" href="${lead.linkedin}" target="_blank" rel="noopener noreferrer">LinkedIn ${icon('ArrowUpRight', 18)}</a>`
         : `<span class="program-status">Recruiting now</span><strong>Lead to be announced</strong><p>We are looking for ${escapeHtml(division.name)} members this year.</p>${data.site.applicationUrl ? `<a class="command primary" href="${data.site.applicationUrl}" target="_blank" rel="noopener noreferrer">Apply to SPS ${icon('ArrowUpRight', 18)}</a>` : ''}`}</div>`;
@@ -304,13 +315,13 @@ export async function openProgram(id) {
   }
   if (id === 'work') showPanel('Our divisions.', 'SPS / Divisions', `<div class="division-list">${data.divisions.map(division => `<details><summary>${escapeHtml(division.name)}${icon('ChevronRight', 18)}</summary><p>${escapeHtml(division.description)}</p><ul>${division.work.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></details>`).join('')}</div><a class="command" href="${siteMode ? data.site.applicationUrl : `${currentSite}/join/`}" ${siteMode ? 'target="_blank" rel="noopener noreferrer"' : ''}>Join the team ${icon('ArrowUpRight', 18)}</a>`);
   if (id === 'journal') showPanel('Project updates.', 'SPS / Project', `<div class="story"><p class="large-copy">Two working prototypes.<br>A Game Boy-inspired handheld is next.</p><p>Our goal is to complete the handheld by June, bringing together custom PCB design, embedded firmware and mechanical enclosure design.</p><div class="milestone"><span>Future iteration</span><strong>2027-2028</strong><p>Schulich on a Chip is working on student-designed chips for a future SPS handheld.</p></div><p>No build logs have been published yet.</p>${siteMode ? '' : `<a class="panel-link" href="${currentSite}/handheld/">Explore the project ${icon('ArrowUpRight', 18)}</a>`}</div>`);
-  if (id === 'join') showPanel('Join the team.', 'SPS / Recruiting', `<div class="join-program"><img src="/media/handheld.webp" alt="SPS handheld colour concept" /><div><span class="program-status">Recruiting now</span><p class="large-copy">Build with us.</p><p>Help build the next handheld through electronics, embedded software, mechanical design, games, business or communications.</p><a class="command primary" href="${data.site.applicationUrl}" target="_blank" rel="noopener noreferrer">Apply to SPS ${icon('ArrowUpRight', 18)}</a><a class="panel-link" href="mailto:${data.site.publicContact.email}">${icon('Mail', 18)} Email SPS</a></div></div>`);
+  if (id === 'join') showPanel('Join the team.', 'SPS / Recruiting', `<div class="join-program"><img src="${activeTheme === 'cartridge' ? '/media/handheld-concept.webp' : '/media/handheld.webp'}" alt="SPS handheld ${activeTheme === 'cartridge' ? 'concept render' : 'colour concept'}" /><div><span class="program-status">Recruiting now</span><p class="large-copy">Build with us.</p><p>Help build the next handheld through electronics, embedded software, mechanical design, games, business or communications.</p><a class="command primary" href="${data.site.applicationUrl}" target="_blank" rel="noopener noreferrer">Apply to SPS ${icon('ArrowUpRight', 18)}</a><a class="panel-link" href="mailto:${data.site.publicContact.email}">${icon('Mail', 18)} Email SPS</a></div></div>`);
   if (id === 'handheld') {
-    const dialog = showPanel('Make it yours.', 'SPS / Colour concept', `<div class="inspector-scene"><canvas aria-label="SPS handheld model" tabindex="0"></canvas><img class="model-fallback" src="/media/handheld.webp" alt="SPS handheld enclosure concept" /></div><div class="inspector-tools"><div class="rotation-buttons">${button('ArrowLeft', 'model-left', 'Rotate handheld left')}${button('RotateCcw', 'model-reset', 'Reset handheld')}${button('ArrowRight', 'model-right', 'Rotate handheld right')}</div><label class="colour-input">${icon('Pipette', 18)} Shell <input type="color" value="#784ac3" aria-label="Shell colour" /></label><span>Actual geometry / illustrative screen</span></div>`, 'hardware-panel');
+    const dialog = showPanel('Make it yours.', 'SPS / Colour concept', `<div class="inspector-scene"><canvas aria-label="SPS handheld model" tabindex="0"></canvas><img class="model-fallback" src="${activeTheme === 'cartridge' ? '/media/handheld-concept-front.webp' : '/media/handheld.webp'}" alt="SPS handheld enclosure concept" /></div><div class="inspector-tools"><div class="rotation-buttons">${button('ArrowLeft', 'model-left', 'Rotate handheld left')}${button('RotateCcw', 'model-reset', 'Reset handheld')}${button('ArrowRight', 'model-right', 'Rotate handheld right')}</div><label class="colour-input">${icon('Pipette', 18)} Shell <input type="color" value="#784ac3" aria-label="Shell colour" /></label><span>${activeTheme === 'cartridge' ? 'Concept model / illustrative screen' : 'Actual geometry / illustrative screen'}</span></div>`, 'hardware-panel');
     try {
       const { createModelStage } = await import('./stage.js');
       if (!dialog.open || !dialog.classList.contains('hardware-panel')) return;
-      const stage = await createModelStage(dialog.querySelector('canvas'), 'inspector');
+      const stage = await createModelStage(dialog.querySelector('canvas'), 'inspector', { model: activeTheme === 'cartridge' ? 'concept' : undefined });
       if (!dialog.open || !dialog.classList.contains('hardware-panel')) { stage.dispose(); return; }
       dialog.querySelector('.model-fallback').hidden = true;
       dialog.querySelector('input[type="color"]').addEventListener('input', event => stage.colour(event.target.value));
