@@ -47,7 +47,12 @@ const reports = [];
 try {
   const home = await fetch(`${origin}/`, { redirect: 'manual' });
   assert.equal(home.status, 200);
-  for (const [key, value] of Object.entries(expectedHeaders)) assert.equal(home.headers.get(key), value, `/: ${key}`);
+  // cloudflare forces its own x-robots-tag: noindex on preview urls
+  const preview = /^https:\/\/[^.]+-sps-website\.[^.]+\.workers\.dev$/.test(origin);
+  for (const [key, value] of Object.entries(expectedHeaders)) {
+    if (preview && key === 'X-Robots-Tag') assert.equal(home.headers.get(key), 'noindex', `/: ${key}`);
+    else assert.equal(home.headers.get(key), value, `/: ${key}`);
+  }
   const html = await home.text();
   assert(html.includes('<link rel="canonical" href="https://schulichpressstart.ca/" />'), 'canonical link');
   assert.equal(html.includes('noindex'), expectedHeaders['X-Robots-Tag'] !== undefined, 'robots meta follows site.indexable');
