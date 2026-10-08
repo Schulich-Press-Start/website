@@ -20,3 +20,4 @@ design/reference/handheld/*.SLDPRT
 src/assets/generated
 public/favicon.png
 public/models/sps-handheld.glb
+dist-site

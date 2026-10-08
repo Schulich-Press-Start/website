@@ -124,10 +124,11 @@ test('approved destinations are configured and unsafe or unapproved ones are rej
   assert.equal(site.applicationUrl, 'https://docs.google.com/forms/d/1ivE8y-b9iFOp2NKrjTDpZ3uFLKTWS5FnDwUbDX5yA6g/viewform');
   assert.equal(site.instagramUrl, 'https://www.instagram.com/sps_ucalgary');
   assert.equal(site.linktreeUrl, 'https://linktr.ee/sps_ucalgary');
+  assert.equal(site.linkedinUrl, 'https://www.linkedin.com/company/schulich-press-start/');
   assert.deepEqual(site.publicContact, { approved: true, email: 'schulichpressstart@gmail.com' });
   assert.equal(site.repositoryUrl, 'https://github.com/Schulich-Press-Start/website');
   assert.equal(siteSettingsSchema.safeParse({ ...site, applicationUrl: null, instagramUrl: null, linktreeUrl: null, publicContact: null }).success, true);
-  for (const field of ['applicationUrl', 'instagramUrl', 'linktreeUrl']) {
+  for (const field of ['applicationUrl', 'instagramUrl', 'linktreeUrl', 'linkedinUrl']) {
     for (const url of ['javascript:alert(1)', 'http://example.org', 'https://user:secret@example.org']) {
       assert.equal(siteSettingsSchema.safeParse({ ...site, [field]: url }).success, false);
     }
@@ -136,7 +137,9 @@ test('approved destinations are configured and unsafe or unapproved ones are rej
   assert.equal(siteSettingsSchema.safeParse({ ...site, applicationUrl: 'http://example.org' }).success, false);
   assert.equal(siteSettingsSchema.safeParse({ ...site, applicationUrl: 'https://user:secret@example.org' }).success, false);
   assert.equal(siteSettingsSchema.safeParse({ ...site, applicationUrl: 'https://example.org/apply' }).success, true);
-  assert.equal(siteSettingsSchema.safeParse({ ...site, indexable: true }).success, false);
+  assert.equal(site.productionOrigin, 'https://schulichpressstart.ca');
+  assert.equal(siteSettingsSchema.safeParse({ ...site, productionOrigin: null, indexable: true }).success, false);
+  assert.equal(siteSettingsSchema.safeParse({ ...site, productionOrigin: 'https://schulichpressstart.ca/team/' }).success, false);
   assert.equal(siteSettingsSchema.safeParse({ ...site, productionOrigin: '' }).success, false);
   assert.equal(siteSettingsSchema.safeParse({ ...site, publicContact: { approved: false, email: 'test@example.org' } }).success, false);
 });
@@ -160,6 +163,14 @@ test('Vercel keeps static delivery, security headers and private upload exclusio
   for (const path of ['.local', '.vscode', '.env', '.env.*', '.vercel', '.playwright-mcp', 'test-results', 'docs']) {
     assert(exclusions.includes(path), `Private upload exclusion missing: ${path}`);
   }
+});
+
+test('Cloudflare serves the public website as plain static assets', () => {
+  const configuration = JSON.parse(readFileSync('wrangler.jsonc', 'utf8').replace(/^\s*\/\/.*$/gm, ''));
+  assert.equal(configuration.name, 'sps-website');
+  assert.equal(configuration.main, undefined);
+  assert.deepEqual(configuration.assets, { directory: './dist-site', not_found_handling: '404-page', html_handling: 'auto-trailing-slash' });
+  assert.equal(configuration.routes, undefined);
 });
 
 test('generated CAD derivatives preserve source pixels and product geometry', async () => {

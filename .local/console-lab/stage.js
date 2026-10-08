@@ -230,7 +230,7 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
     model.position.set(0.9, 0.22, 0.65);
     const cartridgeData = [
       { id: 'handheld', title: 'THE BUILD', sub: 'SPS / HARDWARE', colour: '#784ac3', x: -2.4, z: -1.9 },
-      { id: 'crew', title: 'THE PEOPLE', sub: 'SPS / CREW', colour: '#578b7a', x: -0.6, z: -2.6 },
+      { id: 'crew', title: 'THE TEAMS', sub: 'SPS / TEAMS', colour: '#578b7a', x: -0.6, z: -2.6 },
       { id: 'arcade', title: 'BRICK BREAK', sub: 'BROWSER DEMO', colour: '#d95340', x: 1.2, z: -2.9 },
       { id: 'join', title: 'YOUR TURN', sub: 'SPS / JOIN', colour: '#e0ad37', x: 3.1, z: -2.6 },
     ];
@@ -500,7 +500,7 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
           group.position.lerpVectors(positions[index], target, progress);
         });
       }, 520);
-      display(id === 'handheld' ? 'THE BUILD' : id === 'crew' ? 'THE PEOPLE' : id === 'join' ? 'YOUR TURN' : 'BRICK BREAK');
+      display(id === 'handheld' ? 'THE BUILD' : id === 'crew' ? 'THE TEAMS' : id === 'join' ? 'YOUR TURN' : 'BRICK BREAK');
       render();
     },
     dispose() {

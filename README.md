@@ -2,7 +2,7 @@
 
 The first static website for SPS, a University of Calgary engineering design club developing a custom gaming handheld and original games.
 
-Active feedback site: **https://schulich-press-start.vercel.app** presents four console concepts: Signal, Playroom, Cartridge Club and [Pocket OS](https://schulich-press-start.vercel.app/pocket/). The original six-page site is preserved at **https://schulich-press-start-classic.vercel.app**. Both are accessible without sign-in, with indexing disabled.
+Public website: **https://schulichpressstart.ca**, the Cartridge Club concept with a Teams view, deployed to Cloudflare from `main` (noindex until launch). Feedback site: **https://schulich-press-start.vercel.app** presents four console concepts: Signal, Playroom, Cartridge Club and [Pocket OS](https://schulich-press-start.vercel.app/pocket/). The original six-page site is preserved at **https://schulich-press-start-classic.vercel.app**. Both are accessible without sign-in, with indexing disabled.
 
 The console source is included in Git at [.local/console-lab](.local/console-lab), alongside the original Astro application. A narrow [.gitignore](.gitignore) allowlist tracks the console code, its npm lockfile, two model stills and four public preview images. Other local files, including source photos, approval records, credentials, dependencies, test captures and deployment output, remain ignored. Vercel receives only the audited static build. See [deployment instructions](docs/deployment.md) for the two build paths and alias-safe update commands. Do not run an ordinary Vercel production deploy, which could move both domains.
 
@@ -17,7 +17,7 @@ npm run assets
 npm run dev --prefix .local/console-lab
 ```
 
-The four-concept comparison runs at `http://127.0.0.1:4323/`. To validate its production output, run `node .local/console-lab/build.mjs` followed by `node .local/console-lab/verify-publish.mjs`. See the [console guide](.local/console-lab/README.md) for local variants and detailed checks. These commands do not deploy anything.
+The four-concept comparison runs at `http://127.0.0.1:4323/`. To validate its production output, run `node .local/console-lab/build.mjs` followed by `node .local/console-lab/verify-publish.mjs`. The public website build is `node .local/console-lab/build.mjs --site` followed by `node .local/console-lab/verify-site.mjs`. See the [console guide](.local/console-lab/README.md) for local variants and detailed checks. These commands do not deploy anything.
 
 ## Local Development
 
@@ -74,7 +74,7 @@ Home, Handheld, Team, Journal, Join and Support are prerendered HTML. Join prese
 
 ### Club Context
 
-The user's latest description, constitution and info-night deck inform Home, Handheld and Support. SPS has two working prototypes in different form factors; the next focus is a Game Boy-inspired handheld with a June completion goal. The collaboration with Schulich on a Chip concerns student-designed computer chips for a future 2027-2028 iteration, not the present prototypes. June is a goal without an inferred calendar year or a sales/launch promise.
+The user's latest description, constitution and info-night deck inform Home, Handheld and Support. SPS has two working prototypes in different form factors; the next focus is a Game Boy-inspired handheld with a June completion goal. The collaboration with Schulich on a Chip concerns student-designed computer chips for a future 2027-2028 iteration, not the present prototypes. On the Astro pages June stays a goal without a calendar year or sales promise. The 2026-2027 kickoff deck sets the Gen 1 goal as built, manufactured and on sale by June 2027; the public website's Teams view shows that as a goal (`yearPlan` in club settings).
 
 School of Engineering approval is pending while the club completes its constitution and confirms a faculty advisor. An application to the Schulich Student Activities Fund is a next step after approval, not an award already secured. The supplied documents remain unchanged in ignored `.local/club-documents/`; only reviewed facts enter the public pages. See [content sources and boundaries](design/content-model.md). The presentation's September 25 application deadline is explicitly marked as a placeholder in its notes and is not published.
 
@@ -124,10 +124,10 @@ The user supplied [SPS Linktree](https://linktr.ee/sps_ucalgary) on 2026-09-15. 
 
 The info-night deck's Stay connected slide supplies `schulichpressstart@gmail.com`, now configured as the approved public club contact. The Email SPS action uses that `mailto:` destination, with the full address in its accessible name and tooltip so the button fits narrow screens. No email was sent or delivery tested. If `publicContact` is removed in future, the existing fallback uses the supplied public LinkedIn profile of President Abdul Waase Qureshi. `sponsorProspectusUrl` remains optional; no private email or application deadline is inferred.
 
-`productionOrigin` is deliberately unset and `indexable` is false. The feedback deployment sends noindex metadata, disallow-all robots and an explicit Vercel `X-Robots-Tag` header. Indexing is disabled, not access to the public URL. No custom domain or Cloudflare project has been configured.
+`productionOrigin` is `https://schulichpressstart.ca` and `indexable` is false. Every build sends noindex metadata, disallow-all robots and an `X-Robots-Tag` header. Indexing is disabled, not access to the public URL. Flipping `indexable` is the one-line launch switch; see [deployment](docs/deployment.md#indexing-switch).
 
 ## Deployment And Customisations
 
-See [Vercel deployment](docs/deployment.md), with Cloudflare Pages retained as an optional alternative. The initial Vercel deployment was authorised for feedback and uploaded directly through the CLI; Git was not pushed or connected for automatic deployment. CI still checks and builds only, with no deployment step or external-service secrets. Local Vercel metadata and authentication files remain ignored and excluded from uploads.
+See [deployment](docs/deployment.md). The public website deploys to Cloudflare from CI after every check passes, with previews for pull requests. The Vercel feedback sites are still uploaded by hand through the CLI. Local Vercel metadata and authentication files remain ignored and excluded from uploads.
 
 Repository-scoped skills are in [.github/skills](.github/skills): the original SPS brand skill and the two requested pinned upstream skills. Source URLs, commits and licence details are recorded next to each. Upstream files are unmodified. Existing browser tools were available, so no workspace MCP configuration was needed or overwritten.

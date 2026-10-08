@@ -17,6 +17,11 @@ function tabKeyFor(browserName: string) {
   return browserName === 'webkit' && process.platform === 'darwin' ? 'Alt+Tab' : 'Tab';
 }
 
+// webgl frames and resize observer callbacks land on the next frames, so wait before reading pixels
+async function settledFrame(page: Page) {
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+}
+
 async function visit(page: Page, path: string) {
   const response = await page.goto(path);
   expect(response?.status(), `HTTP status for ${path}`).toBe(200);
@@ -493,7 +498,7 @@ test('3D load failure keeps a useful static presentation', async ({ page }) => {
   await page.route('**/models/sps-handheld.glb', (route) => route.abort());
   await visit(page, '/handheld/');
   await page.getByRole('button', { name: 'Explore in 3D' }).click();
-  await expect(page.locator('[data-viewer-status]')).toContainText('3D is unavailable here');
+  await expect(page.locator('[data-viewer-status]')).toContainText('3D is unavailable here', { timeout: 15_000 });
   await expect(page.locator('.viewer-poster')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Retry 3D' })).toBeEnabled();
 });
@@ -528,7 +533,7 @@ test('shell colour picker updates the front and solid back while preserving sour
     await expect(viewer).toHaveAttribute('data-ready', 'true', { timeout: 15_000 });
     const canvas = viewer.locator('canvas');
     const picker = viewer.getByLabel('Shell colour', { exact: true });
-    const capture = () => canvas.evaluate((element) => (element as HTMLCanvasElement).toDataURL());
+    const capture = async () => { await settledFrame(page); return canvas.evaluate((element) => (element as HTMLCanvasElement).toDataURL()); };
     const chooseColour = async (value: string) => {
       await picker.evaluate((element, colour) => {
         const input = element as HTMLInputElement;
@@ -614,7 +619,7 @@ test('product tour, camera presets, screen and CAD inspection respond to input',
   await viewer.getByRole('button', { name: 'Explore in 3D' }).click();
   await expect(viewer).toHaveAttribute('data-ready', 'true', { timeout: 15_000 });
   const canvas = viewer.locator('canvas');
-  const capture = () => canvas.evaluate((element) => (element as HTMLCanvasElement).toDataURL());
+  const capture = async () => { await settledFrame(page); return canvas.evaluate((element) => (element as HTMLCanvasElement).toDataURL()); };
   const stop = viewer.getByRole('button', { name: 'Stop model animation' });
   await viewer.getByRole('button', { name: 'Replay model animation' }).click();
   await expect(stop).toBeEnabled();
@@ -628,6 +633,8 @@ test('product tour, camera presets, screen and CAD inspection respond to input',
   await canvas.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   expect(await capture()).toBe(stoppedFrame);
   await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.waitForFunction(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
+  await settledFrame(page);
   await viewer.getByRole('button', { name: 'Overview', exact: true }).click();
   const overview = await capture();
   await viewer.getByRole('button', { name: 'Controls', exact: true }).click();

@@ -30,7 +30,7 @@ if (finish === 'purple' || finish === 'white-grid') {
 
 const cartridges = [
   { id:'handheld', title:'The build.', label:'Hardware', colour:'#784ac3', icon:'Gamepad2', description:'Explore the handheld we are building.' },
-  { id:'crew', title:'The team.', label:'Crew', colour:'#578b7a', icon:'Users', description:'Meet the students behind SPS.' },
+  { id:'crew', title:'The teams.', label:'Teams', colour:'#578b7a', icon:'Users', description:'Six teams building one handheld. Meet the leads and see what each team does.' },
   { id:'arcade', title:'Brick Break', label:'Arcade', colour:'#d95340', icon:'Sparkles', description:'Take a break with a quick game.' },
   { id:'join', title:'Your turn.', label:'Join SPS', colour:'#dfab36', icon:'Send', description:'Find your place on the team.' },
 ];
@@ -91,7 +91,7 @@ loadButton.onclick=async()=>{
   if (!completed) { loadButton.focus({preventScroll:true}); return; }
   loaded = Boolean(stage);
   loadButton.focus({preventScroll:true});
-  openProgram(program);
+  openProgram(program === 'crew' ? 'teams' : program);
 };
 document.querySelector('.view-toggle').innerHTML=icon('RotateCcw',19);
 resetButton.onclick=()=>{cancelLoading();stage?.select(cartridges[selected].id);};

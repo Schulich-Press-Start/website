@@ -111,6 +111,7 @@ export const siteSettingsSchema = schema.object({
   repositoryUrl: httpsUrl,
   instagramUrl: httpsUrl.nullable().default(null),
   linktreeUrl: httpsUrl.nullable().default(null),
+  linkedinUrl: httpsUrl.nullable().default(null),
   recruitmentStatus: schema.enum(['recruiting', 'paused', 'closed']),
   applicationUrl: httpsUrl.nullable(),
   publicContact: schema.object({
