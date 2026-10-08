@@ -22,6 +22,7 @@ dist-site/
 !.local/console-lab/verify-publish.mjs
 !.local/console-lab/verify-site.mjs
 !.local/console-lab/site-server.mjs
+!.local/console-lab/vercel-temp.mjs
 !.local/console-lab/cartridge/
 .local/console-lab/cartridge/*
 !.local/console-lab/cartridge/index.html
