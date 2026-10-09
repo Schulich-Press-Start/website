@@ -228,14 +228,15 @@ function socialLinks() {
 const cartridgeGrip = '<span class="team-cart-grip" aria-hidden="true"></span>';
 const cartridgeMark = '<span class="team-cart-mark" aria-hidden="true"><svg viewBox="0 0 10 10" width="8" height="8"><path d="M2 1l7 4-7 4z" fill="currentColor"/></svg>SPS</span>';
 
+// official team colours (see the sps team colours rule), ink is the text colour that stays readable on top
 // colours and codes are presentation only, team facts come from club.json
 const teamLooks = {
-  'embedded-hardware': { colour: '#784ac3', code: 'SPS-01', icon: 'CircuitBoard' },
-  'embedded-software': { colour: '#3f78a8', code: 'SPS-02', icon: 'SlidersHorizontal' },
-  'game-design': { colour: '#d95340', code: 'SPS-03', icon: 'Gamepad2' },
-  mechanical: { colour: '#3f8a6f', code: 'SPS-04', icon: 'Box' },
-  business: { colour: '#c98a12', code: 'SPS-05', icon: 'BookOpen' },
-  communications: { colour: '#c4507a', code: 'SPS-06', icon: 'Send' },
+  'embedded-hardware': { colour: '#30c758', ink: '#17171b', code: 'SPS-01', icon: 'CircuitBoard' },
+  'embedded-software': { colour: '#2289e3', ink: '#ffffff', code: 'SPS-02', icon: 'SlidersHorizontal' },
+  'game-design': { colour: '#e3410b', ink: '#ffffff', code: 'SPS-03', icon: 'Gamepad2' },
+  mechanical: { colour: '#e8204c', ink: '#ffffff', code: 'SPS-04', icon: 'Box' },
+  business: { colour: '#f7f016', ink: '#17171b', code: 'SPS-05', icon: 'BookOpen' },
+  communications: { colour: '#c716f7', ink: '#ffffff', code: 'SPS-06', icon: 'Send' },
 };
 
 function teamLead(divisionId) {
@@ -246,9 +247,9 @@ function teamLead(divisionId) {
 function openTeams() {
   const president = data.members.find(member => member.id === data.memberships.find(item => item.role === 'president')?.memberId);
   const rack = data.divisions.map((division, index) => {
-    const look = teamLooks[division.id] ?? { colour: '#784ac3', code: `SPS-0${index + 1}`, icon: 'Box' };
+    const look = teamLooks[division.id] ?? { colour: '#784ac3', ink: '#ffffff', code: `SPS-0${index + 1}`, icon: 'Box' };
     const lead = teamLead(division.id);
-    return `<button type="button" class="team-cart" data-team="${index}" aria-pressed="${index === 0}" style="--cart:${look.colour}"><span class="team-cart-body">${cartridgeGrip}<span class="team-cart-label"><span class="team-cart-band" aria-hidden="true">${icon(look.icon, 16)}<span>${look.code}</span></span><strong>${escapeHtml(division.name)}</strong><span class="team-cart-meta">${lead ? `Lead: ${escapeHtml(lead.name.split(' ')[0])}` : 'Recruiting'}</span></span>${cartridgeMark}<span class="team-cart-pins" aria-hidden="true"></span></span></button>`;
+    return `<button type="button" class="team-cart" data-team="${index}" aria-pressed="${index === 0}" style="--cart:${look.colour};--cart-ink:${look.ink}"><span class="team-cart-body">${cartridgeGrip}<span class="team-cart-label"><span class="team-cart-band" aria-hidden="true">${icon(look.icon, 16)}<span>${look.code}</span></span><strong>${escapeHtml(division.name)}</strong><span class="team-cart-meta">${lead ? `Lead: ${escapeHtml(lead.name.split(' ')[0])}` : 'Recruiting'}</span></span>${cartridgeMark}<span class="team-cart-pins" aria-hidden="true"></span></span></button>`;
   }).join('');
   const handheld = `<div class="team-console" aria-hidden="true"><span class="team-console-cart"><span></span></span><img src="/media/handheld-concept-front.webp" alt="" width="300" height="440" /><span class="team-console-screen"><span data-console-code></span><strong data-console-name></strong></span></div>`;
   const plan = (data.yearPlan ?? []).map(item => `<li><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.detail)}</span></li>`).join('');
@@ -264,10 +265,11 @@ function openTeams() {
   const detailBody = detail.querySelector('.team-detail-body');
   const select = (index, fromUser = false) => {
     const division = data.divisions[index];
-    const look = teamLooks[division.id] ?? { colour: '#784ac3', code: `SPS-0${index + 1}` };
+    const look = teamLooks[division.id] ?? { colour: '#784ac3', ink: '#ffffff', code: `SPS-0${index + 1}` };
     const lead = teamLead(division.id);
     dialog.querySelectorAll('[data-team]').forEach(item => item.setAttribute('aria-pressed', String(Number(item.dataset.team) === index)));
     detail.style.setProperty('--cart', look.colour);
+    detail.style.setProperty('--cart-ink', look.ink);
     detail.dataset.division = division.id;
     detail.querySelector('[data-console-code]').textContent = look.code;
     detail.querySelector('[data-console-name]').textContent = division.name;
