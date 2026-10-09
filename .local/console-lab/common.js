@@ -224,14 +224,15 @@ function socialLinks() {
   ].filter(Boolean);
 }
 
+// official team colours (see the sps team colours rule), ink is the text colour that stays readable on top
 // colours and codes are presentation only, team facts come from club.json
 const teamLooks = {
-  'embedded-hardware': { colour: '#784ac3', code: 'SPS-01', icon: 'CircuitBoard' },
-  'embedded-software': { colour: '#3f78a8', code: 'SPS-02', icon: 'SlidersHorizontal' },
-  'game-design': { colour: '#d95340', code: 'SPS-03', icon: 'Gamepad2' },
-  mechanical: { colour: '#3f8a6f', code: 'SPS-04', icon: 'Box' },
-  business: { colour: '#c98a12', code: 'SPS-05', icon: 'BookOpen' },
-  communications: { colour: '#c4507a', code: 'SPS-06', icon: 'Send' },
+  'embedded-hardware': { colour: '#30c758', ink: '#17171b', code: 'SPS-01', icon: 'CircuitBoard' },
+  'embedded-software': { colour: '#2289e3', ink: '#ffffff', code: 'SPS-02', icon: 'SlidersHorizontal' },
+  'game-design': { colour: '#e3410b', ink: '#ffffff', code: 'SPS-03', icon: 'Gamepad2' },
+  mechanical: { colour: '#e8204c', ink: '#ffffff', code: 'SPS-04', icon: 'Box' },
+  business: { colour: '#f7f016', ink: '#17171b', code: 'SPS-05', icon: 'BookOpen' },
+  communications: { colour: '#c716f7', ink: '#ffffff', code: 'SPS-06', icon: 'Send' },
 };
 
 function teamLead(divisionId) {
@@ -242,9 +243,9 @@ function teamLead(divisionId) {
 function openTeams() {
   const president = data.members.find(member => member.id === data.memberships.find(item => item.role === 'president')?.memberId);
   const rack = data.divisions.map((division, index) => {
-    const look = teamLooks[division.id] ?? { colour: '#784ac3', code: `SPS-0${index + 1}`, icon: 'Box' };
+    const look = teamLooks[division.id] ?? { colour: '#784ac3', ink: '#ffffff', code: `SPS-0${index + 1}`, icon: 'Box' };
     const lead = teamLead(division.id);
-    return `<button type="button" class="team-cart" data-team="${index}" aria-pressed="${index === 0}" style="--cart:${look.colour}"><span class="team-cart-top" aria-hidden="true">${icon(look.icon, 18)}</span><span class="team-cart-label"><strong>${escapeHtml(division.name)}</strong><span><span>${lead ? `Lead: ${escapeHtml(lead.name.split(' ')[0])}` : 'Recruiting'}</span><span aria-hidden="true">${look.code.slice(4)}</span></span></span><span class="team-cart-pins" aria-hidden="true"></span></button>`;
+    return `<button type="button" class="team-cart" data-team="${index}" aria-pressed="${index === 0}" style="--cart:${look.colour};--cart-ink:${look.ink}"><span class="team-cart-top" aria-hidden="true">${icon(look.icon, 18)}</span><span class="team-cart-label"><strong>${escapeHtml(division.name)}</strong><span><span>${lead ? `Lead: ${escapeHtml(lead.name.split(' ')[0])}` : 'Recruiting'}</span><span aria-hidden="true">${look.code.slice(4)}</span></span></span><span class="team-cart-pins" aria-hidden="true"></span></button>`;
   }).join('');
   const plan = (data.yearPlan ?? []).map(item => `<li><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.detail)}</span></li>`).join('');
   const dialog = showPanel('Meet the teams.', 'SPS / Teams', `
@@ -258,10 +259,11 @@ function openTeams() {
   const detail = dialog.querySelector('.team-detail');
   const select = (index, fromUser = false) => {
     const division = data.divisions[index];
-    const look = teamLooks[division.id] ?? { colour: '#784ac3', code: `SPS-0${index + 1}` };
+    const look = teamLooks[division.id] ?? { colour: '#784ac3', ink: '#ffffff', code: `SPS-0${index + 1}` };
     const lead = teamLead(division.id);
     dialog.querySelectorAll('[data-team]').forEach(item => item.setAttribute('aria-pressed', String(Number(item.dataset.team) === index)));
     detail.style.setProperty('--cart', look.colour);
+    detail.style.setProperty('--cart-ink', look.ink);
     detail.dataset.division = division.id;
     detail.innerHTML = `<div class="team-detail-copy"><span>${look.code} / Team</span><h3>${escapeHtml(division.name)}</h3><p>${escapeHtml(division.description)}</p><h4>What we work on</h4><ul>${division.work.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>
       <div class="team-lead">${lead
