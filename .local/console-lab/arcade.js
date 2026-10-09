@@ -1,8 +1,9 @@
 import Matter from 'matter-js';
+import { paddleBounce, steerBall } from './ball.js';
 import { icon } from './common.js';
 
 export function startArcade(dialog, tone) {
-  const { Engine, Bodies, Body, Composite, Events, Vector } = Matter;
+  const { Engine, Bodies, Body, Composite, Events } = Matter;
   const canvas = dialog.querySelector('canvas');
   const context = canvas.getContext('2d');
   const gameTitle = dialog.querySelector('#panel-title').textContent;
@@ -81,9 +82,8 @@ export function startArcade(dialog, tone) {
     while (accumulated >= 1000 / 60) {
       if (direction) Body.setPosition(paddle, { x: Math.max(70, Math.min(width - 70, paddle.position.x + direction * 9)), y: paddle.position.y });
       Engine.update(engine, 1000 / 60);
-      const speed = Vector.magnitude(ball.velocity);
-      if (speed > 0) Body.setVelocity(ball, Vector.mult(Vector.normalise(ball.velocity), Math.min(9.5, 7.2 + score * 0.045)));
-      if (Math.abs(ball.velocity.y) < 1.5) Body.setVelocity(ball, { x: ball.velocity.x, y: ball.velocity.y >= 0 ? 2 : -2 });
+      const steered = steerBall({ y: ball.position.y, vx: ball.velocity.x, vy: ball.velocity.y }, Math.min(9.5, 7.2 + score * 0.045));
+      Body.setVelocity(ball, { x: steered.vx, y: steered.vy });
       accumulated -= 1000 / 60;
     }
     if (ball.position.y > height + 30 || !targets.length) { ended = true; setPlaying(false); return; }
@@ -99,8 +99,8 @@ export function startArcade(dialog, tone) {
         score += 10; scoreLabel.textContent = String(score); tone();
       }
       if ([pair.bodyA.label, pair.bodyB.label].includes('paddle')) {
-        const offset = (ball.position.x - paddle.position.x) / 67;
-        Body.setVelocity(ball, { x: offset * 6, y: -6.5 });
+        const bounce = paddleBounce((ball.position.x - paddle.position.x) / 67);
+        Body.setVelocity(ball, { x: bounce.vx, y: bounce.vy });
       }
     }
   });

@@ -8,6 +8,7 @@ dist-site/
 !.local/console-lab/404.html
 !.local/console-lab/README.md
 !.local/console-lab/arcade.js
+!.local/console-lab/ball.js
 !.local/console-lab/audio.js
 !.local/console-lab/build.mjs
 !.local/console-lab/common.css
