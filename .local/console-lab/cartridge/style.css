@@ -28,7 +28,7 @@ body[data-theme=cartridge] .boot{background:#e6b4c6;color:#493047}body[data-them
 @media(min-width:1600px){.cartridge-heading h1{font-size:5.6rem}.cartridge-lede{font-size:1.05rem}}
 @media(min-width:1001px) and (max-height:750px){.cartridge-heading h1{font-size:3.4rem}.cartridge-lede{display:none}}
 @media(max-width:1000px){.cartridge-heading h1{font-size:3.7rem}}
-@media(max-width:900px){.cartridge-selection{padding-top:0}.cartridge-lede{font-size:.9rem;max-width:40ch}.cartridge-heading h1{margin:.5rem 0 .8rem;font-size:2.5rem}.cartridge-kicker{font-size:.66rem!important}}
+@media(max-width:900px){.cartridge-selection{padding-top:0}.cartridge-lede{font-size:.9rem;max-width:40ch}.cartridge-heading h1{margin:.5rem 0 .8rem;font-size:2.5rem;line-height:1.2}.cartridge-kicker{font-size:.66rem!important}}
 @media(max-width:600px){.cartridge-lede{display:none}}
 /* every cartridge blurb sits in the same grid cell, so switching tabs never changes the height */
 .cartridge-copy-stack{display:grid}.cartridge-copy-stack>.cartridge-copy{grid-area:1/1}.cartridge-copy[aria-hidden=true]{visibility:hidden;pointer-events:none}
