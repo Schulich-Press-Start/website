@@ -1,4 +1,4 @@
-import { setup, icon, tone, openProgram, animate } from '../common.js';
+import { setup, icon, tone, openProgram, animate, data } from '../common.js';
 
 let finish = 'purple';
 if (import.meta.env.DEV) {
@@ -39,11 +39,15 @@ let selected = 0;
 let loading = false;
 let loaded = false;
 let loadOperation = 0;
+const lede = document.querySelector('#cartridge-lede');
+if (data.site.description) { lede.textContent = data.site.description; lede.hidden = false; }
 const rail = document.querySelector('.cartridge-rail');
 const loadButton = document.querySelector('.load-cartridge');
 const loadLabel = loadButton.querySelector('span:last-child');
 const resetButton = document.querySelector('.view-toggle');
-rail.innerHTML = cartridges.map((item,index)=>`<button class="cartridge-tab" type="button" data-cartridge="${item.id}" aria-pressed="${index===0}" style="--cart:${item.colour}"><span class="mini-cartridge" aria-hidden="true">${icon(item.icon,20)}</span><span>${item.label}</span><span class="cartridge-tab-arrow">${icon('ArrowUpRight',16)}</span></button>`).join('');
+// invisible copies of every blurb reserve the height of the longest one, so the page doesn't jump between tabs
+document.querySelector('.cartridge-copy-stack').insertAdjacentHTML('beforeend', cartridges.map(item => `<div class="cartridge-copy" aria-hidden="true" inert><span>SPS / ${item.label}</span><h2>${item.title}</h2><p>${item.description}</p></div>`).join(''));
+rail.innerHTML = cartridges.map((item,index)=>`<button class="cartridge-tab" type="button" data-cartridge="${item.id}" aria-pressed="${index===0}" style="--cart:${item.colour}"><span class="mini-cartridge" aria-hidden="true">${icon(item.icon,16)}</span><span class="cartridge-tab-text"><span class="cartridge-tab-index" aria-hidden="true">0${index+1}</span><span>${item.label}</span></span><span class="cartridge-tab-arrow">${icon('ArrowUpRight',16)}</span></button>`).join('');
 function select(index, focus = false) {
   if (loading || loaded) return;
   selected=(index+cartridges.length)%cartridges.length;
@@ -117,7 +121,7 @@ setup('cartridge',async()=>{
   if(!stage){
     try{
       const {createModelStage}=await import('../stage.js');
-      stage=await createModelStage(document.querySelector('#stage'),'cartridge',{onSelect:id=>select(cartridges.findIndex(item=>item.id===id)),workbench:finish,frame:workbenchFrame});
+      stage=await createModelStage(document.querySelector('#stage'),'cartridge',{onSelect:id=>select(cartridges.findIndex(item=>item.id===id)),workbench:finish,frame:workbenchFrame,model:'concept'});
       document.querySelector('#stage-fallback').hidden=true;
     }catch{document.querySelector('#stage').hidden=true;document.body.dataset.stageFallback='true';}
   }

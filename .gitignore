@@ -22,6 +22,8 @@ dist-site/
 !.local/console-lab/verify.mjs
 !.local/console-lab/verify-publish.mjs
 !.local/console-lab/verify-site.mjs
+!.local/console-lab/site-server.mjs
+!.local/console-lab/vercel-temp.mjs
 !.local/console-lab/cartridge/
 .local/console-lab/cartridge/*
 !.local/console-lab/cartridge/index.html
@@ -48,6 +50,8 @@ dist-site/
 .local/console-lab/media/*
 !.local/console-lab/media/handheld.webp
 !.local/console-lab/media/controls.webp
+!.local/console-lab/media/handheld-concept.webp
+!.local/console-lab/media/handheld-concept-front.webp
 !.local/console-lab/screenshots/
 .local/console-lab/screenshots/*
 !.local/console-lab/screenshots/signal-chromium-desktop.png
@@ -69,3 +73,6 @@ public/favicon.png
 public/models/sps-handheld.glb
 .vercel
 .env*
+
+# blender autosave backups
+*.blend1

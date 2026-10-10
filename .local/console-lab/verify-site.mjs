@@ -1,46 +1,20 @@
 import assert from 'node:assert/strict';
-import { createServer } from 'node:http';
-import { mkdir, readFile, stat } from 'node:fs/promises';
-import { extname, join, normalize } from 'node:path';
+import { mkdir, readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, webkit, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { startSiteServer, parseHeaders } from './site-server.mjs';
 
 const directory = fileURLToPath(new URL('../../dist-site/', import.meta.url));
 const screenshots = process.env.SPS_SCREENSHOTS ?? fileURLToPath(new URL('site-screenshots/', import.meta.url));
 await mkdir(screenshots, { recursive: true });
 const data = JSON.parse(await readFile(join(directory, 'club.json'), 'utf8'));
 
-// mirrors the parts of cloudflare static assets the site relies on: _headers, _redirects, 404-page
-function parseHeaders(text) {
-  const rules = [];
-  for (const line of text.split('\n')) {
-    if (!line.trim()) continue;
-    if (!line.startsWith(' ')) rules.push({ pattern: line.trim(), headers: {} });
-    else { const [key, ...value] = line.trim().split(': '); rules.at(-1).headers[key] = value.join(': '); }
-  }
-  return rules;
-}
+const local = process.env.SPS_SITE_ORIGIN ? undefined : await startSiteServer({ port: 4325, directory });
+const server = local?.server;
 const headerRules = parseHeaders(await readFile(join(directory, '_headers'), 'utf8'));
-const redirects = (await readFile(join(directory, '_redirects'), 'utf8')).split('\n').filter(Boolean).map(line => line.split(/\s+/));
 const expectedHeaders = headerRules.find(rule => rule.pattern === '/*').headers;
-const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.webp': 'image/webp', '.woff2': 'font/woff2', '.glb': 'model/gltf-binary', '.txt': 'text/plain' };
-const matches = (pattern, path) => pattern.endsWith('*') ? path.startsWith(pattern.slice(0, -1)) : pattern === path;
-async function file(path) { try { return (await stat(path)).isFile() ? path : undefined; } catch { return undefined; } }
-
-const server = process.env.SPS_SITE_ORIGIN ? undefined : createServer(async (request, response) => {
-  const path = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
-  for (const rule of headerRules) if (matches(rule.pattern, path)) for (const [key, value] of Object.entries(rule.headers)) response.setHeader(key, value);
-  const redirect = redirects.find(([from]) => from === path);
-  if (redirect) { response.writeHead(Number(redirect[2]), { Location: redirect[1] }); response.end(); return; }
-  const safe = normalize(path).replace(/^(\.\.[/\\])+/, '');
-  if (/(^|\/)_(headers|redirects)$/.test(safe)) { response.writeHead(404); response.end(); return; }
-  const found = await file(join(directory, safe.endsWith('/') ? `${safe}index.html` : safe));
-  const target = found ?? join(directory, '404.html');
-  response.writeHead(found ? 200 : 404, { 'Content-Type': types[extname(target)] ?? 'application/octet-stream' });
-  response.end(await readFile(target));
-});
-if (server) await new Promise(resolve => server.listen(4325, '127.0.0.1', resolve));
 const origin = process.env.SPS_SITE_ORIGIN ?? 'http://127.0.0.1:4325';
 const reports = [];
 

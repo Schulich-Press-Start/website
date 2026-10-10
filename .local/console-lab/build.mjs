@@ -30,6 +30,9 @@ const media = new Map([
   ['media/logo-dark.png', 'src/assets/generated/logo-light-surface.png'],
   ['media/signature.png', 'src/assets/generated/signature.png'],
   ['models/sps-handheld.glb', 'public/models/sps-handheld.glb'],
+  ['models/sps-handheld-concept.glb', 'public/models/sps-handheld-concept.glb'],
+  ['media/handheld-concept.webp', '.local/console-lab/media/handheld-concept.webp'],
+  ['media/handheld-concept-front.webp', '.local/console-lab/media/handheld-concept-front.webp'],
   ['media/display.woff2', 'node_modules/@fontsource-variable/kufam/files/kufam-latin-wght-normal.woff2'],
   ['media/body.woff2', 'node_modules/@fontsource-variable/commissioner/files/commissioner-latin-wght-normal.woff2'],
   ['favicon.png', 'public/favicon.png'],
@@ -59,7 +62,7 @@ try {
     }
   }
   await writeFile(join(publicDirectory, 'club.json'), JSON.stringify({
-    site: { name: site.name, applicationUrl: site.applicationUrl, publicContact: site.publicContact, instagramUrl: site.instagramUrl, linkedinUrl: site.linkedinUrl, recruitmentStatus: site.recruitmentStatus },
+    site: { name: site.name, description: site.description, applicationUrl: site.applicationUrl, publicContact: site.publicContact, instagramUrl: site.instagramUrl, linkedinUrl: site.linkedinUrl, recruitmentStatus: site.recruitmentStatus },
     members: club.members.map(({ id, name, coFounder, linkedin }) => ({ id, name, coFounder, linkedin })),
     memberships: club.memberships,
     divisions: club.divisions,
@@ -188,7 +191,7 @@ function siteHtml(html, path) {
     site.publicContact?.email && `<a href="mailto:${site.publicContact.email}">Email</a>`,
   ].filter(Boolean).join('');
   const replaced = html
-    .replace(/<meta name="robots"[^>]*>/, `${robots}<meta name="description" content="${description}" /><link rel="canonical" href="${canonical}" /><meta property="og:type" content="website" /><meta property="og:site_name" content="${site.name}" /><meta property="og:title" content="${site.name}" /><meta property="og:description" content="${description}" /><meta property="og:url" content="${canonical}" /><meta property="og:image" content="${productionOrigin}/media/handheld.webp" /><meta name="theme-color" content="#784ac3" />`)
+    .replace(/<meta name="robots"[^>]*>/, `${robots}<meta name="description" content="${description}" /><link rel="canonical" href="${canonical}" /><meta property="og:type" content="website" /><meta property="og:site_name" content="${site.name}" /><meta property="og:title" content="${site.name}" /><meta property="og:description" content="${description}" /><meta property="og:url" content="${canonical}" /><meta property="og:image" content="${productionOrigin}/media/handheld-concept.webp" /><meta name="theme-color" content="#784ac3" />`)
     .replace('<title>Cartridge Club / SPS Console Lab</title>', `<title>${site.name} / Cartridge Club</title>`)
     .replace(/<noscript>[\s\S]*?<\/noscript>/, `<noscript><div class="noscript"><strong>${site.name}</strong>. ${description} ${contact}</div></noscript>`)
     .replace('<a href="/signal/">Signal</a><a href="/playroom/">Playroom</a>', footer)
