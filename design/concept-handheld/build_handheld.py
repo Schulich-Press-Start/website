@@ -31,10 +31,11 @@ DPAD = Vector((-0.0215, -0.0215))     # x, z
 ABXY = Vector((0.0215, -0.0215))
 SCREEN_Z = 0.0355
 PILL_Z = -0.0615
-# the shell's solidify grows outward, so its outer skin is WALL bigger than W x H and the old back sat at D / 2 + WALL.
-# the clear shell now stops short and a real circuit board closes the back, flush with where the old back was
-BACK_OUT = D / 2 + WALL      # outside face of the back board
-SHELL_BACK = BACK_OUT - PCB_T
+# the shell's solidify grows outward, so its outer skin is WALL bigger than W x H.
+# the enclosure is a clear front shell plus a clear back cover, the double sided board sits inside both
+BACK_IN = D / 2              # where the shell walls stop and the back cover starts
+BACK_OUT = D / 2 + WALL      # outside face of the back cover
+BOARD_BACK = PCB_FRONT + PCB_T   # underside of the main board, faces the back cover
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 scene = bpy.context.scene
@@ -78,17 +79,27 @@ def srgb(hex_colour):
     return tuple(c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4 for c in channels)
 
 
-shell_mat = material('sps_shell', '#d6a6f7', rough=0.05, transmission=1.0, ior=1.49, coat=0.4)
-tree = shell_mat.node_tree
-absorb = tree.nodes.new('ShaderNodeVolumeAbsorption')
-absorb.inputs['Color'].default_value = (*srgb('#b061e6'), 1)
-absorb.inputs['Density'].default_value = 55.0
-tree.links.new(absorb.outputs['Volume'], tree.nodes['Material Output'].inputs['Volume'])
-gltf_node = tree.nodes.new('ShaderNodeGroup')
-gltf_node.node_tree = gltf_output_group()
-gltf_node.inputs['Thickness'].default_value = WALL
+def clear_plastic(name, rough, coat=0.4):
+    # tinted clear acrylic, the volume absorption gives the purple and the gltf group exports the wall thickness
+    mat = material(name, '#d6a6f7', rough=rough, transmission=1.0, ior=1.49, coat=coat)
+    tree = mat.node_tree
+    absorb = tree.nodes.new('ShaderNodeVolumeAbsorption')
+    absorb.inputs['Color'].default_value = (*srgb('#b061e6'), 1)
+    absorb.inputs['Density'].default_value = 55.0
+    tree.links.new(absorb.outputs['Volume'], tree.nodes['Material Output'].inputs['Volume'])
+    group = tree.nodes.new('ShaderNodeGroup')
+    group.node_tree = gltf_output_group()
+    group.inputs['Thickness'].default_value = WALL
+    return mat
+
+
+shell_mat = clear_plastic('sps_shell', 0.05)
+# the back cover is polished flat so the board underneath reads clearly instead of frosted
+shell_back_mat = clear_plastic('sps_shell_back', 0.0, coat=0.12)
 
 pcb_mat = material('sps_pcb', '#6531a4', rough=0.38, coat=0.25)
+# same mask on the underside, with less clear coat so it doesn't mirror the room through the clear back
+pcb_back_mat = material('sps_pcb_back', '#6531a4', rough=0.42, coat=0.06)
 trace_mat = material('sps_trace', '#8a5bd0', rough=0.32, metal=0.25)
 silk_mat = material('sps_silk', '#e9def8', rough=0.6)
 chip_mat = material('sps_chip', '#17141d', rough=0.42)
@@ -105,6 +116,7 @@ flex_mat = material('sps_flex', '#9a5a22', rough=0.35, metal=0.3)
 led_white = material('sps_led_white', '#ffffff', rough=0.3, emission='#ffffff', strength=6)
 led_red = material('sps_led_red', '#ff4a4a', rough=0.3, emission='#ff3b3b', strength=6)
 led_green = material('sps_led_green', '#5dff8a', rough=0.3, emission='#4dff7c', strength=6)
+jst_mat = material('sps_jst', '#f1e8d6', rough=0.5)
 
 
 # ---------- screen texture ----------
@@ -290,11 +302,11 @@ def join(objects, name):
 
 # ---------- shell ----------
 
-shell = prism('sps_shell', rounded_outline(W, H, 0.0075, 10), FRONT, SHELL_BACK, shell_mat, bevel=0.0022, bevel_segments=4)
-# open the back so only the front edges get rounded, the back board sits on the rim instead
+shell = prism('sps_shell', rounded_outline(W, H, 0.0075, 10), FRONT, BACK_IN, shell_mat, bevel=0.0022, bevel_segments=4)
+# open the back so only the front edges get rounded, the clear back cover closes it
 bm = bmesh.new()
 bm.from_mesh(shell.data)
-bmesh.ops.delete(bm, geom=[f for f in bm.faces if all(abs(v.co.y - SHELL_BACK) < 1e-7 for v in f.verts)], context='FACES_ONLY')
+bmesh.ops.delete(bm, geom=[f for f in bm.faces if all(abs(v.co.y - BACK_IN) < 1e-7 for v in f.verts)], context='FACES_ONLY')
 bm.to_mesh(shell.data)
 bm.free()
 apply_all(shell)
@@ -329,11 +341,19 @@ for poly in shell.data.polygons:
     poly.use_smooth = True
 shell.data.set_sharp_from_angle(angle=math.radians(35))
 
+# clear back cover, the same acrylic as the front. a hair of gap so the two parts read as separate pieces
+back_cover = prism('sps_shell_back', rounded_outline(W + 2 * WALL, H + 2 * WALL, 0.0075 + WALL, 10), BACK_IN + 0.00005, BACK_OUT, shell_back_mat, bevel=0.0012, bevel_segments=3)
+apply_all(back_cover)
+# keep the two big faces dead flat, smooth normals bleeding in from the bevel would streak the view of the board
+for poly in back_cover.data.polygons:
+    if abs(poly.normal.y) > 0.99:
+        poly.use_smooth = False
+
 # screw posts are part of the shell moulding
 posts = []
 SCREWS = [(-0.0385, 0.0668), (0.0385, 0.0668), (-0.0385, 0.0030), (0.0385, 0.0030), (-0.0385, -0.0668), (0.0385, -0.0668)]
 for x, z in SCREWS:
-    posts.append(cylinder('post', 0.0029, INNER_FRONT, SHELL_BACK, (x, z), shell_mat, 20))
+    posts.append(cylinder('post', 0.0029, INNER_FRONT, BACK_IN, (x, z), shell_mat, 20))
 posts = join(posts, 'sps_posts')
 
 
@@ -346,6 +366,12 @@ for x, z in SCREWS:
     mod = pcb.modifiers.new('hole', 'BOOLEAN'); mod.operation = 'DIFFERENCE'; mod.solver = 'EXACT'; mod.object = c
     apply_all(pcb)
     bpy.data.objects.remove(c, do_unlink=True)
+pcb.data.materials.append(pcb_back_mat)
+for poly in pcb.data.polygons:
+    if poly.normal.y > 0.5:
+        poly.material_index = 1
+        # the hole booleans leave smooth normals that streak across the long triangles, a board is flat anyway
+        poly.use_smooth = False
 
 top = PCB_FRONT  # parts grow toward -y from here
 
@@ -531,25 +557,17 @@ for x, z in SCREWS:
     slots.append(box('slot', (0.00045, 0.0004, 0.0024), (x, FRONT - 0.00072, z), chip_mat))
 screw_slots = join(slots, 'sps_screw_slots')
 
-# ---------- back board ----------
-# the back of the handheld is a real circuit board instead of smooth plastic: same purple solder mask as the
-# main board, copper under the mask, vias, smd parts, test points, white silkscreen and the screws that hold it on
+# ---------- board underside ----------
+# the main board is double sided. its underside faces the clear back cover, so everything here is inside the shell
+# and shows through the back: copper under the purple mask, vias, smd parts, test points and white silkscreen
 
-fr4_mat = material('sps_fr4', '#cdbf96', rough=0.62)
-jst_mat = material('sps_jst', '#f1e8d6', rough=0.5)
+BW, BH, BR = 0.083, 0.143, 0.005     # same outline as sps_pcb
 
-OW, OH, OR = W + 2 * WALL, H + 2 * WALL, 0.0075 + WALL
-back = prism('sps_back_pcb', rounded_outline(OW, OH, OR, 10), SHELL_BACK, BACK_OUT, pcb_mat)
-back.data.materials.append(fr4_mat)
-for poly in back.data.polygons:
-    if abs(poly.normal.y) < 0.5:
-        poly.material_index = 1     # the routed edge shows the fibreglass core
-
-# heights above the mask, kept apart enough that nothing z-fights on the web
-Y_COPPER = BACK_OUT + 0.00004
-Y_PAD = BACK_OUT + 0.00006
-Y_SILK = BACK_OUT + 0.00008
-Y_HOLE = BACK_OUT + 0.00010
+# heights above the board's underside, kept apart enough that nothing z-fights on the web
+Y_COPPER = BOARD_BACK + 0.00004
+Y_PAD = BOARD_BACK + 0.00006
+Y_SILK = BOARD_BACK + 0.00008
+Y_HOLE = BOARD_BACK + 0.00010
 
 
 def U(u):
@@ -571,11 +589,14 @@ class Layer:
     def disc(self, x, z, r, y, segments=10):
         self.up([(x + r * math.cos(2 * math.pi * i / segments), z + r * math.sin(2 * math.pi * i / segments)) for i in range(segments)], y)
 
-    def ring(self, x, z, r0, r1, y, segments=16):
+    def ring(self, x, z, r0, r1, y, segments=16, inside=None):
         for i in range(segments):
             a0, a1 = 2 * math.pi * i / segments, 2 * math.pi * (i + 1) / segments
-            self.up([(x + r0 * math.cos(a0), z + r0 * math.sin(a0)), (x + r1 * math.cos(a0), z + r1 * math.sin(a0)),
-                     (x + r1 * math.cos(a1), z + r1 * math.sin(a1)), (x + r0 * math.cos(a1), z + r0 * math.sin(a1))], y)
+            quad = [(x + r0 * math.cos(a0), z + r0 * math.sin(a0)), (x + r1 * math.cos(a0), z + r1 * math.sin(a0)),
+                    (x + r1 * math.cos(a1), z + r1 * math.sin(a1)), (x + r0 * math.cos(a1), z + r0 * math.sin(a1))]
+            if inside and not all(inside(px, pz) for px, pz in quad):
+                continue
+            self.up(quad, y)
 
     def rect(self, x, z, sx, sz, y, angle=0.0):
         c, s = math.cos(angle), math.sin(angle)
@@ -609,16 +630,20 @@ class Layer:
         return obj
 
 
-copper = Layer('sps_back_copper', trace_mat)
-gold = Layer('sps_back_gold', gold_mat)
-dark = Layer('sps_back_dark', lcd_frame_mat)
-silk2d = Layer('sps_back_silk', silk_mat)
-bodies = Layer('sps_back_chips', chip_mat)
-caps = Layer('sps_back_caps', part_mat)
-metal = Layer('sps_back_metal', metal_mat)
-jst = Layer('sps_back_jst', jst_mat)
+copper = Layer('sps_board_back_copper', trace_mat)
+gold = Layer('sps_board_back_gold', gold_mat)
+dark = Layer('sps_board_back_dark', lcd_frame_mat)
+silk2d = Layer('sps_board_back_silk', silk_mat)
+bodies = Layer('sps_board_back_chips', chip_mat)
+caps = Layer('sps_board_back_caps', part_mat)
+metal = Layer('sps_board_back_metal', metal_mat)
+jst = Layer('sps_board_back_jst', jst_mat)
 texts = []
 keepouts = []
+
+
+def on_board(x, z, margin=0.0):
+    return abs(x) <= BW / 2 - margin and abs(z) <= BH / 2 - margin
 
 
 def keep(x, z, sx, sz, margin=0.0008):
@@ -626,7 +651,7 @@ def keep(x, z, sx, sz, margin=0.0008):
 
 
 def free(x, z):
-    if abs(x) > OW / 2 - 0.0035 or abs(z) > OH / 2 - 0.0035:
+    if not on_board(x, z, 0.0030):
         return False
     return not any(x0 < x < x1 and z0 < z < z1 for x0, x1, z0, z1 in keepouts)
 
@@ -701,9 +726,9 @@ def chip_resistor(u, v, horizontal=True, size=(0.0016, 0.0008), tag=None, cap=Fa
         sx, sz = (end * 1.6, size[1] * 1.25) if horizontal else (size[1] * 1.25, end * 1.6)
         gold.rect(px + (side * end * 0.3 if horizontal else 0), pz + (0 if horizontal else side * end * 0.3), sx, sz, Y_PAD)
         ex, ez = (end, size[1]) if horizontal else (size[1], end)
-        metal.block(px, pz, ex, ez, BACK_OUT, BACK_OUT + size[1] * 0.55)
+        metal.block(px, pz, ex, ez, BOARD_BACK, BOARD_BACK + size[1] * 0.55)
     bx, bz = (lx - 2 * end, lz) if horizontal else (lx, lz - 2 * end)
-    body.block(x, v, bx, bz, BACK_OUT, BACK_OUT + size[1] * 0.55)
+    body.block(x, v, bx, bz, BOARD_BACK, BOARD_BACK + size[1] * 0.55)
     keep(x, v, lx, lz, 0.0006)
     if tag:
         if horizontal:
@@ -713,16 +738,16 @@ def chip_resistor(u, v, horizontal=True, size=(0.0016, 0.0008), tag=None, cap=Fa
 
 
 def gull(u, v, length, width, pins, pitch, height=0.0015, tag=None, tag_side=1):
-    # soic style: body plus leads out of the two long sides, pin one dot, silk corners
+    # soic style: body plus leads out of the two long sides, pin one dot, silk outline
     x = U(u)
-    bodies.block(x, v, length, width, BACK_OUT + 0.0001, BACK_OUT + height)
+    bodies.block(x, v, length, width, BOARD_BACK + 0.0001, BOARD_BACK + height)
     start = -(pins - 1) * pitch / 2
     for i in range(pins):
         for side in (-1, 1):
             lx = x + start + i * pitch
-            metal.block(lx, v + side * (width / 2 + 0.0004), 0.00042, 0.0009, BACK_OUT, BACK_OUT + 0.0005)
+            metal.block(lx, v + side * (width / 2 + 0.0004), 0.00042, 0.0009, BOARD_BACK, BOARD_BACK + 0.0005)
             gold.rect(lx, v + side * (width / 2 + 0.00055), 0.0006, 0.0014, Y_PAD)
-    silk2d.disc(x + length / 2 - 0.0007, v - width / 2 + 0.0007, 0.00028, BACK_OUT + height + 0.00002, 10)
+    silk2d.disc(x + length / 2 - 0.0007, v - width / 2 + 0.0007, 0.00028, BOARD_BACK + height + 0.00002, 10)
     silk2d.outline(x, v, length + 0.0008, width + 0.0034, Y_SILK)
     keep(x, v, length + 0.0012, width + 0.0034)
     if tag:
@@ -731,7 +756,7 @@ def gull(u, v, length, width, pins, pitch, height=0.0015, tag=None, tag_side=1):
 
 def qfn(u, v, size, pins_per_side, pitch, tag=None):
     x = U(u)
-    bodies.block(x, v, size, size, BACK_OUT, BACK_OUT + 0.0009)
+    bodies.block(x, v, size, size, BOARD_BACK, BOARD_BACK + 0.0009)
     start = -(pins_per_side - 1) * pitch / 2
     for i in range(pins_per_side):
         o = start + i * pitch
@@ -749,14 +774,12 @@ def qfn(u, v, size, pins_per_side, pitch, tag=None):
 
 def sot23(u, v, five=False, tag=None):
     x = U(u)
-    bodies.block(x, v, 0.0029, 0.0016, BACK_OUT + 0.0001, BACK_OUT + 0.0011)
-    top = (-0.00095, 0.0, 0.00095) if five else (0.0,)
-    bottom = (-0.00095, 0.00095) if five else (-0.00095, 0.00095)
-    for lx in bottom:
-        metal.block(x + lx, v - 0.0011, 0.0004, 0.0007, BACK_OUT, BACK_OUT + 0.0004)
+    bodies.block(x, v, 0.0029, 0.0016, BOARD_BACK + 0.0001, BOARD_BACK + 0.0011)
+    for lx in (-0.00095, 0.00095):
+        metal.block(x + lx, v - 0.0011, 0.0004, 0.0007, BOARD_BACK, BOARD_BACK + 0.0004)
         gold.rect(x + lx, v - 0.0012, 0.0006, 0.0010, Y_PAD)
-    for lx in (top if five else (0.0,)):
-        metal.block(x + lx, v + 0.0011, 0.0004, 0.0007, BACK_OUT, BACK_OUT + 0.0004)
+    for lx in ((-0.00095, 0.0, 0.00095) if five else (0.0,)):
+        metal.block(x + lx, v + 0.0011, 0.0004, 0.0007, BOARD_BACK, BOARD_BACK + 0.0004)
         gold.rect(x + lx, v + 0.0012, 0.0006, 0.0010, Y_PAD)
     keep(x, v, 0.0036, 0.0036)
     if tag:
@@ -773,8 +796,13 @@ def test_point(u, v, name, net):
     keepouts.append((U(u - 0.0012), U(u - 0.0080), v - 0.0008, v + 0.0008))
 
 
-# board outline marks: stitching vias around the edge, like a ground ring
-edge = rounded_outline(OW - 0.0056, OH - 0.0056, OR - 0.0028, 10)
+# things that already live on this side of the board: the cartridge connector up top and the usb-c receptacle
+keepouts.append((-0.0300, 0.0300, 0.0550, 0.0680))
+keepouts.append((-0.0065, 0.0065, -BH / 2, -BH / 2 + 0.0040))
+label('J1 CART', -0.0115, 0.0532, 0.0009)
+
+# stitching vias around the edge, like a ground ring
+edge = rounded_outline(BW - 0.0044, BH - 0.0044, BR - 0.0022, 6)
 lengths = [math.dist(edge[i], edge[(i + 1) % len(edge)]) for i in range(len(edge))]
 step, travelled, target = 0.0042, 0.0, 0.0
 for i, length in enumerate(lengths):
@@ -782,50 +810,44 @@ for i, length in enumerate(lengths):
     while target <= travelled + length:
         t = (target - travelled) / length
         x, z = x0 + (x1 - x0) * t, z0 + (z1 - z0) * t
-        near_screw = any(math.dist((x, z), screw) < 0.0052 for screw in SCREWS)
-        bottom_ports = z < -OH / 2 + 0.008 and (abs(x) < 0.008 or abs(x + 0.020) < 0.0055)
-        if not near_screw and not bottom_ports:
+        near_screw = any(math.dist((x, z), screw) < 0.0050 for screw in SCREWS)
+        under_connector = abs(x) < 0.0300 and z > 0.0540
+        bottom_ports = z < -BH / 2 + 0.006 and (abs(x) < 0.0065 or abs(x + 0.020) < 0.0055)
+        if not near_screw and not under_connector and not bottom_ports:
             via(x, z)
         target += step
     travelled += length
 
-# mounting holes: plated rings with the screws that hold the board to the shell posts
-back_screws, back_slots = [], []
+# plated mounting holes, the shell posts come through them. rings get clipped where the hole sits near the edge
 for x, z in SCREWS:
-    gold.ring(x, z, 0.0021, 0.0033, Y_PAD, 24)
-    silk2d.ring(x, z, 0.0038, 0.00395, Y_SILK, 28)
-    back_screws.append(cylinder('screw', 0.0021, BACK_OUT, BACK_OUT + 0.0008, (x, z), screw_mat, 20, bevel=0.0004))
-    back_slots.append(box('slot', (0.0024, 0.0004, 0.00045), (x, BACK_OUT + 0.00072, z), chip_mat))
-    back_slots.append(box('slot', (0.00045, 0.0004, 0.0024), (x, BACK_OUT + 0.00072, z), chip_mat))
+    gold.ring(x, z, 0.0031, 0.0039, Y_PAD, 24, inside=lambda px, pz: on_board(px, pz, 0.0002))
     keep(x, z, 0.0082, 0.0082)
-back_screws = join(back_screws, 'sps_back_screws')
-back_slots = join(back_slots, 'sps_back_screw_slots')
 
-# ble module under a shield can, with its antenna meander and keepout up by the top edge
-can_u, can_v, can_w, can_h = -0.0125, 0.0545, 0.0195, 0.0150
-metal.block(U(can_u), can_v, can_w, can_h, BACK_OUT, BACK_OUT + 0.0019)
+# ble module under a shield can, squeezed between the logo plate and the cartridge connector, antenna beside it
+can_u, can_v, can_w, can_h = -0.0160, 0.0454, 0.0195, 0.0120
+metal.block(U(can_u), can_v, can_w, can_h, BOARD_BACK, BOARD_BACK + 0.0019)
 for i in range(6):
-    for j in range(4):
-        dark.disc(U(can_u - 0.0070 + i * 0.0028), can_v - 0.0042 + j * 0.0028, 0.00045, BACK_OUT + 0.00192, 10)
-for k in range(9):
-    gold.rect(U(can_u - can_w / 2 - 0.0005), can_v - 0.0060 + k * 0.0015, 0.0008, 0.0006, Y_PAD)
+    for j in range(3):
+        dark.disc(U(can_u - 0.0070 + i * 0.0028), can_v - 0.0028 + j * 0.0028, 0.00045, BOARD_BACK + 0.00192, 10)
+for k in range(7):
+    gold.rect(U(can_u - can_w / 2 - 0.0005), can_v - 0.0045 + k * 0.0015, 0.0008, 0.0006, Y_PAD)
 keep(U(can_u), can_v, can_w + 0.002, can_h + 0.002)
-label('U8', can_u - can_w / 2 - 0.0022, can_v + 0.0050, 0.0010, 'RIGHT')
-label('BLE', can_u - can_w / 2 - 0.0022, can_v + 0.0033, 0.0008, 'RIGHT')
-meander = [(can_u + can_w / 2 + 0.0002, can_v + 0.0025), (0.0050, can_v + 0.0025)]
+label('U8', can_u - can_w / 2 - 0.0022, can_v + 0.0036, 0.0010, 'RIGHT')
+label('BLE', can_u - can_w / 2 - 0.0022, can_v + 0.0019, 0.0008, 'RIGHT')
+meander = [(can_u + can_w / 2 + 0.0002, can_v + 0.0020), (0.0050, can_v + 0.0020)]
 for i in range(7):
     u = 0.0050 + i * 0.0036
-    meander += [(u, 0.0655 if i % 2 == 0 else 0.0505), (u + 0.0036, 0.0655 if i % 2 == 0 else 0.0505)] if i < 6 else [(u, 0.0655)]
+    meander += [(u, 0.0510 if i % 2 == 0 else 0.0400), (u + 0.0036, 0.0510 if i % 2 == 0 else 0.0400)] if i < 6 else [(u, 0.0510)]
 track(meander, 0.00065, keepout=False)
 for k in range(28):
     t = k / 28
-    silk2d.rect(U(0.0035 + t * 0.0290), 0.0490, 0.0006, 0.00016, Y_SILK)
-    silk2d.rect(U(0.0035 + t * 0.0290), 0.0672, 0.0006, 0.00016, Y_SILK)
-for k in range(12):
-    silk2d.rect(U(0.0030), 0.0496 + k * 0.0015, 0.00016, 0.0006, Y_SILK)
-    silk2d.rect(U(0.0330), 0.0496 + k * 0.0015, 0.00016, 0.0006, Y_SILK)
-label('ANT1', 0.0180, 0.0463, 0.0009)
-keepouts.append((U(0.0335), U(0.0025), 0.0455, 0.0685))
+    silk2d.rect(U(0.0035 + t * 0.0290), 0.0385, 0.0006, 0.00016, Y_SILK)
+    silk2d.rect(U(0.0035 + t * 0.0290), 0.0525, 0.0006, 0.00016, Y_SILK)
+for k in range(9):
+    silk2d.rect(U(0.0030), 0.0391 + k * 0.0015, 0.00016, 0.0006, Y_SILK)
+    silk2d.rect(U(0.0330), 0.0391 + k * 0.0015, 0.00016, 0.0006, Y_SILK)
+label('ANT1', 0.0180, 0.0538, 0.0009)
+keepouts.append((U(0.0335), U(0.0025), 0.0375, 0.0545))
 
 # the logo plate in the middle
 label('SPS', 0.0045, 0.0262, 0.0118)
@@ -875,7 +897,7 @@ chip_resistor(0.0110, -0.0405, False, (0.0010, 0.0005), cap=True, tag='C3')
 chip_resistor(0.0220, -0.0405, False, (0.0010, 0.0005), cap=True, tag='C4')
 chip_resistor(0.0165, -0.0350, True, (0.0010, 0.0005), tag='R6')
 chip_resistor(0.0080, -0.0470, False, cap=True, tag='C5')
-chip_resistor(-0.0005, -0.0470, False, cap=True, tag='C6')
+chip_resistor(-0.0010, -0.0470, False, cap=True, tag='C6')
 for i in range(5):
     chip_resistor(-0.0060 + i * 0.0028, -0.0310, False, tag=f'R{i + 1}')
 for i in range(4):
@@ -883,25 +905,25 @@ for i in range(4):
 chip_resistor(0.0265, -0.0350, True, tag='R7')
 chip_resistor(0.0265, -0.0225, True, tag='R8')
 # diode next to the battery connector
-bodies.block(U(0.0240), -0.0590, 0.0027, 0.0016, BACK_OUT, BACK_OUT + 0.0010)
-metal.block(U(0.0240) + 0.0009, -0.0590, 0.0004, 0.00162, BACK_OUT, BACK_OUT + 0.00102)
+bodies.block(U(0.0240), -0.0560, 0.0027, 0.0016, BOARD_BACK, BOARD_BACK + 0.0010)
+metal.block(U(0.0240) + 0.0009, -0.0560, 0.0004, 0.00162, BOARD_BACK, BOARD_BACK + 0.00102)
 for side in (-1, 1):
-    gold.rect(U(0.0240) + side * 0.0019, -0.0590, 0.0012, 0.0012, Y_PAD)
-keep(U(0.0240), -0.0590, 0.0050, 0.0020)
-label('D1', 0.0240, -0.0568, 0.0008)
+    gold.rect(U(0.0240) + side * 0.0019, -0.0560, 0.0012, 0.0012, Y_PAD)
+keep(U(0.0240), -0.0560, 0.0050, 0.0020)
+label('D1', 0.0240, -0.0538, 0.0008)
 
-# battery connector on the bottom edge, a right angle jst with its mouth flush with the board edge
+# battery connector on the bottom edge of the board, a right angle jst facing the bottom wall. it stays inside the shell
 bt_x = U(0.0200)
-mouth = -OH / 2 + 0.0002
-jst.block(bt_x, mouth + 0.0026, 0.0060, 0.0052, BACK_OUT, BACK_OUT + 0.0045)
+mouth = -BH / 2 + 0.0002
+jst.block(bt_x, mouth + 0.0026, 0.0060, 0.0052, BOARD_BACK, BOARD_BACK + 0.0045)
 # latch window and the moulded ribs on top of the housing
-dark.block(bt_x, mouth + 0.0030, 0.0030, 0.0014, BACK_OUT + 0.0040, BACK_OUT + 0.00455)
+dark.block(bt_x, mouth + 0.0030, 0.0030, 0.0014, BOARD_BACK + 0.0040, BOARD_BACK + 0.00455)
 for side in (-1, 1):
-    jst.block(bt_x + side * 0.0024, mouth + 0.0040, 0.0006, 0.0018, BACK_OUT + 0.0045, BACK_OUT + 0.0049)
-dark.block(bt_x, mouth + 0.0002, 0.0044, 0.0006, BACK_OUT + 0.0008, BACK_OUT + 0.0036)
+    jst.block(bt_x + side * 0.0024, mouth + 0.0040, 0.0006, 0.0018, BOARD_BACK + 0.0045, BOARD_BACK + 0.0049)
+dark.block(bt_x, mouth + 0.0002, 0.0044, 0.0006, BOARD_BACK + 0.0008, BOARD_BACK + 0.0036)
 for side in (-1, 1):
-    metal.block(bt_x + side * 0.0010, mouth + 0.0004, 0.0005, 0.0006, BACK_OUT + 0.0018, BACK_OUT + 0.0023)
-    metal.block(bt_x + side * 0.0036, mouth + 0.0040, 0.0012, 0.0016, BACK_OUT, BACK_OUT + 0.0006)
+    metal.block(bt_x + side * 0.0010, mouth + 0.0004, 0.0005, 0.0006, BOARD_BACK + 0.0018, BOARD_BACK + 0.0023)
+    metal.block(bt_x + side * 0.0036, mouth + 0.0040, 0.0012, 0.0016, BOARD_BACK, BOARD_BACK + 0.0006)
     gold.rect(bt_x + side * 0.0036, mouth + 0.0040, 0.0016, 0.0022, Y_PAD)
 keep(bt_x, mouth + 0.0026, 0.0090, 0.0060)
 label('+', 0.0172, mouth + 0.0068, 0.0012)
@@ -910,13 +932,13 @@ label('BT1', 0.0110, mouth + 0.0036, 0.0010)
 label('LIPO 3.7V', 0.0110, mouth + 0.0019, 0.0008)
 keepouts.append((U(0.0150), U(0.0070), mouth, mouth + 0.0045))
 
-# usb callout above the port in the bottom wall
-label('USB-C 5V', 0.0, -OH / 2 + 0.0078, 0.00095)
-silk2d.up([(U(-0.0011), -OH / 2 + 0.0062), (U(0.0011), -OH / 2 + 0.0062), (U(0.0), -OH / 2 + 0.0047)], Y_SILK)
-keepouts.append((-0.0075, 0.0075, -OH / 2, -OH / 2 + 0.0090))
+# usb callout above the receptacle at the bottom edge
+label('USB-C 5V', 0.0, -BH / 2 + 0.0078, 0.00095)
+silk2d.up([(U(-0.0011), -BH / 2 + 0.0062), (U(0.0011), -BH / 2 + 0.0062), (U(0.0), -BH / 2 + 0.0047)], Y_SILK)
+keepouts.append((-0.0075, 0.0075, -BH / 2, -BH / 2 + 0.0090))
 
-# data matrix sticker area, a random 14 x 14 code with the solid l finder and the clock edges
-dm_u, dm_v, cell = -0.0195, -0.0590, 0.00036
+# data matrix area, a random 14 x 14 code with the solid l finder and the clock edges
+dm_u, dm_v, cell = -0.0195, -0.0570, 0.00036
 random_state = random.getstate()
 for i in range(14):
     for j in range(14):
@@ -926,13 +948,14 @@ for i in range(14):
 keep(U(dm_u), dm_v, 14 * cell, 14 * cell, 0.001)
 
 # fiducials for the pick and place
-for u, v in ((-0.0315, 0.0590), (0.0315, -0.0500), (0.0060, 0.0400)):
+for u, v in ((-0.0345, 0.0380), (0.0335, -0.0480), (-0.0060, -0.0600)):
     gold.disc(U(u), v, 0.0005, Y_PAD, 16)
     keep(U(u), v, 0.0026, 0.0026, 0.0)
 
 # the routed nets first so the filler stays out of their way
-bus([(j3_u, j3_v + 0.0030), (j3_u, -0.0110), (-0.0262, -0.0015), (-0.0262, 0.0380), (-0.0200, 0.0442), (-0.0200, can_v - can_h / 2 - 0.0002)], 4)
-bus([(0.0140, -0.0190 + 0.0036), (0.0140, -0.0100), (0.0255, 0.0015), (0.0255, 0.0390), (0.0200, 0.0445), (-0.0060, 0.0445), (-0.0060, can_v - can_h / 2 - 0.0002)], 4)
+can_bottom = can_v - can_h / 2 - 0.0002
+bus([(j3_u, j3_v + 0.0030), (j3_u, -0.0110), (-0.0262, -0.0015), (-0.0262, 0.0356), (-0.0226, can_bottom)], 4)
+bus([(0.0140, -0.0190 + 0.0036), (0.0140, -0.0100), (0.0255, 0.0015), (0.0255, 0.0335), (0.0222, 0.0368), (-0.0090, 0.0368), (-0.0090, can_bottom)], 4)
 for (name, net), (u, v) in zip(tps, tp_spots):
     if net in ('SWDIO', 'SWCLK'):
         track(route((u + 0.0011, v), (j3_u - 0.0025 + (0.00254 if net == 'SWCLK' else 0.0), j3_v - 0.0027)))
@@ -941,13 +964,13 @@ for (name, net), (u, v) in zip(tps, tp_spots):
         via(U(u + 0.0054), v)
 track(route((0.0200, mouth + 0.0060), (0.0165, -0.0405 - 0.0025)), 0.0007)
 track(route((0.0165 - 0.0020, -0.0405), (0.0035 + 0.0015, -0.0470)), 0.0006)
-track(route((0.0, -OH / 2 + 0.0090), (0.0035, -0.0470 - 0.0019)), 0.0007)
-via(U(0.0), -OH / 2 + 0.0092)
+track(route((0.0, -BH / 2 + 0.0090), (0.0035, -0.0470 - 0.0019)), 0.0007)
+via(U(0.0), -BH / 2 + 0.0092)
 
 # filler tracks wandering between everything else, each one ends in a via
 directions = [(1, 0), (-1, 0), (0, 1), (0, -1), (0.7071, 0.7071), (-0.7071, 0.7071), (0.7071, -0.7071), (-0.7071, -0.7071)]
 for _ in range(260):
-    x, z = random.uniform(-0.041, 0.041), random.uniform(-0.071, 0.071)
+    x, z = random.uniform(-BW / 2, BW / 2), random.uniform(-BH / 2, BH / 2)
     if not free(x, z):
         continue
     points = [(x, z)]
@@ -973,7 +996,7 @@ for _ in range(260):
 
 # a scatter of unlabeled passives in whatever space is left
 for _ in range(120):
-    u, v = random.uniform(-0.038, 0.038), random.uniform(-0.066, 0.066)
+    u, v = random.uniform(-BW / 2, BW / 2), random.uniform(-BH / 2, BH / 2)
     x = U(u)
     if not all(free(x + dx, v + dz) for dx in (-0.0014, 0.0014) for dz in (-0.0012, 0.0012)):
         continue
@@ -986,16 +1009,26 @@ for obj in texts:
     obj.select_set(True)
 bpy.context.view_layer.objects.active = texts[0]
 bpy.ops.object.convert(target='MESH')
-silk_mesh = join([obj for obj in back_layers if obj.name == 'sps_back_silk'] + texts, 'sps_back_silk')
+silk_mesh = join([obj for obj in back_layers if obj.name == 'sps_board_back_silk'] + texts, 'sps_board_back_silk')
 # the converted text has to face out too, the site renders single sided
 bm = bmesh.new()
 bm.from_mesh(silk_mesh.data)
 for face in bm.faces:
     face.normal_update()
-    if face.normal.y < -0.5 and all(v.co.y > BACK_OUT + 1e-6 for v in face.verts):
+    if face.normal.y < -0.5 and all(v.co.y > BOARD_BACK + 1e-6 for v in face.verts):
         face.normal_flip()
 bm.to_mesh(silk_mesh.data)
 bm.free()
+
+# screws come in through the clear back cover into the posts, shanks show through the plastic
+back_screws, back_slots = [], []
+for x, z in SCREWS:
+    back_screws.append(cylinder('screw', 0.0021, BACK_OUT, BACK_OUT + 0.0008, (x, z), screw_mat, 20, bevel=0.0004))
+    back_screws.append(cylinder('shank', 0.0011, BACK_OUT - 0.0085, BACK_OUT, (x, z), screw_mat, 12))
+    back_slots.append(box('slot', (0.0024, 0.0004, 0.00045), (x, BACK_OUT + 0.00072, z), chip_mat))
+    back_slots.append(box('slot', (0.00045, 0.0004, 0.0024), (x, BACK_OUT + 0.00072, z), chip_mat))
+back_screws = join(back_screws, 'sps_back_screws')
+back_slots = join(back_slots, 'sps_back_screw_slots')
 
 
 # marks the middle of the cartridge slot so the site can line cartridges up with it
@@ -1007,10 +1040,19 @@ for obj in scene.objects:
     if obj.type == 'MESH':
         apply_all(obj)
 
+# everything soldered to the main board moves together, handy for exploded views
+board_parts = ['sps_pcb', 'sps_traces', 'sps_silk', 'sps_chips', 'sps_parts', 'sps_pins', 'sps_slot', 'sps_usb', 'sps_usb_cavity',
+               'sps_usb_tongue', 'sps_led_white', 'sps_led_red', 'sps_led_green', 'sps_speaker', 'sps_speaker_dots', 'sps_flex_conn']
+board_group = bpy.data.objects.new('sps_board', None)
+scene.collection.objects.link(board_group)
+for obj in scene.objects:
+    if obj.name in board_parts or obj.name.startswith('sps_board_back_'):
+        obj.parent = board_group
+
 root = bpy.data.objects.new('sps_handheld_concept', None)
 scene.collection.objects.link(root)
 for obj in scene.objects:
-    if obj is not root:
+    if obj is not root and obj.parent is None:
         obj.parent = root
 
 
@@ -1028,7 +1070,7 @@ def patch_glb(path):
     binary = data[20 + json_length:]
     for mat in document['materials']:
         mat.pop('doubleSided', None)
-        if mat['name'] == 'sps_shell':
+        if mat['name'] in ('sps_shell', 'sps_shell_back'):
             mat.setdefault('extensions', {})['KHR_materials_volume'] = {
                 'thicknessFactor': WALL, 'attenuationDistance': 0.02, 'attenuationColor': list(srgb('#b061e6'))}
     used = document.setdefault('extensionsUsed', [])
@@ -1100,17 +1142,18 @@ def area_light(name, location, target, size, power, colour=(1, 1, 1)):
 if do_render:
     # render only: let shadow rays pass through the shell with a purple tint, otherwise cycles treats
     # everything lit through the plastic as caustics and the board goes dark while the buttons blow out
-    nodes, links = shell_mat.node_tree.nodes, shell_mat.node_tree.links
-    output = nodes['Material Output']
-    principled = nodes['Principled BSDF']
-    path = nodes.new('ShaderNodeLightPath')
-    clear = nodes.new('ShaderNodeBsdfTransparent')
-    clear.inputs['Color'].default_value = (*srgb('#e6c8ff'), 1)
-    mix = nodes.new('ShaderNodeMixShader')
-    links.new(path.outputs['Is Shadow Ray'], mix.inputs['Fac'])
-    links.new(principled.outputs['BSDF'], mix.inputs[1])
-    links.new(clear.outputs['BSDF'], mix.inputs[2])
-    links.new(mix.outputs['Shader'], output.inputs['Surface'])
+    for plastic in (shell_mat, shell_back_mat):
+        nodes, links = plastic.node_tree.nodes, plastic.node_tree.links
+        output = nodes['Material Output']
+        principled = nodes['Principled BSDF']
+        path = nodes.new('ShaderNodeLightPath')
+        clear = nodes.new('ShaderNodeBsdfTransparent')
+        clear.inputs['Color'].default_value = (*srgb('#e6c8ff'), 1)
+        mix = nodes.new('ShaderNodeMixShader')
+        links.new(path.outputs['Is Shadow Ray'], mix.inputs['Fac'])
+        links.new(principled.outputs['BSDF'], mix.inputs[1])
+        links.new(clear.outputs['BSDF'], mix.inputs[2])
+        links.new(mix.outputs['Shader'], output.inputs['Surface'])
 
     scene.render.engine = 'CYCLES'
     prefs = bpy.context.preferences.addons['cycles'].preferences
@@ -1142,10 +1185,10 @@ if do_render:
     world.node_tree.nodes['Background'].inputs['Strength'].default_value = 0.35
     scene.world = world
 
-    area_light('key', (-0.35, -0.45, 0.42), (0, 0, 0), 0.35, 5, (1.0, 0.96, 0.92))
-    area_light('fill', (0.45, -0.35, 0.05), (0, 0, 0), 0.5, 2.5, (0.85, 0.85, 1.0))
+    key = area_light('key', (-0.35, -0.45, 0.42), (0, 0, 0), 0.35, 5, (1.0, 0.96, 0.92))
+    fill = area_light('fill', (0.45, -0.35, 0.05), (0, 0, 0), 0.5, 2.5, (0.85, 0.85, 1.0))
     area_light('rim', (0.25, 0.4, 0.35), (0, 0, 0), 0.25, 8, (0.95, 0.9, 1.0))
-    area_light('top', (0.0, -0.1, 0.5), (0, 0, 0), 0.3, 2)
+    top = area_light('top', (0.0, -0.1, 0.5), (0, 0, 0), 0.3, 2)
 
     cam_data = bpy.data.cameras.new('camera')
     cam = bpy.data.objects.new('camera', cam_data)
@@ -1174,7 +1217,14 @@ if do_render:
         bpy.ops.render.render(write_still=True)
 
     if 'back' in views:
-        # the circuit board side, turned a little so the board edge, usb-c and battery connector show
+        # the clear back, turned a little so the walls and the usb-c opening show. the key light swings out to the
+        # side so it doesn't mirror across the flat cover and wash out the board behind it
+        key.location = (-0.55, -0.25, 0.22)
+        look_at(key, (0, 0, 0))
+        top.data.energy = 0.8
+        # the big fill and top lights still light the board but stop showing up as a sheet on the flat cover
+        fill.visible_glossy = False
+        top.visible_glossy = False
         root.rotation_euler = (math.radians(-8), 0, math.radians(180 + 22))
         cam_data.lens = 85
         cam.location = (-0.02, -0.455, -0.06)

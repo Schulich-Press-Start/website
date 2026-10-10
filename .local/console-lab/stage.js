@@ -95,7 +95,8 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
     object.castShadow = true;
     object.receiveShadow = true;
     if (concept) {
-      if (object.material.name === 'sps_shell') {
+      // the front shell and the clear back cover share the same treatment
+      if (object.material.name.startsWith('sps_shell')) {
         // the shadow map treats transmission as opaque, so the clear shell would shade its own insides
         object.castShadow = false;
         object.material.attenuationDistance = 0.9;
@@ -103,7 +104,7 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
         // three picks the blur level of what's behind a transmissive surface from its roughness, even the 0.05
         // from blender blurs the board and lcd by about half a mip, so the clear plastic is perfectly smooth here
         object.material.roughness = 0;
-        shell.push(object.material);
+        if (!shell.includes(object.material)) shell.push(object.material);
       }
       if (['sps_silk', 'sps_trace'].includes(object.material.name)) {
         // printed and etched layers sit a hair above the board, nudge them so they never flicker
