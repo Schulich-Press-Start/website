@@ -28,14 +28,21 @@ export function groupPlasticSurfaces(geometry) {
 export async function createModelStage(canvas, mode = 'signal', options = {}) {
   const horizonGrid = mode === 'cartridge' && (options.workbench === 'purple' || import.meta.env?.DEV === true && options.workbench === 'white-grid');
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, preserveDrawingBuffer: true, powerPreference: 'low-power' });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+  // render at the screen's real resolution up to 2x. weaker machines start at 1.5x and anything that
+  // stutters during an animation steps down, see trackFrame
+  const lowEnd = (navigator.deviceMemory ?? 8) <= 4 || (navigator.hardwareConcurrency ?? 8) <= 4;
+  let pixelRatio = Math.min(devicePixelRatio || 1, lowEnd ? 1.5 : 2);
+  renderer.setPixelRatio(pixelRatio);
+  canvas.dataset.pixelRatio = String(pixelRatio);
+  const maxAnisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 0.92;
   renderer.shadowMap.enabled = mode === 'cartridge' || mode === 'pocket';
   renderer.shadowMap.type = THREE.PCFShadowMap;
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(mode === 'cartridge' ? 36 : 32, 1, 0.01, 100);
+  // nothing gets closer than a unit, a near plane of 0.1 keeps the thin silkscreen and copper from z-fighting
+  const camera = new THREE.PerspectiveCamera(mode === 'cartridge' ? 36 : 32, 1, 0.1, 100);
   const environment = new THREE.PMREMGenerator(renderer);
   const room = new RoomEnvironment();
   const environmentMap = environment.fromScene(room, 0.04);
@@ -47,7 +54,7 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
   const key = new THREE.DirectionalLight('#fff5e4', mode === 'pocket' ? 1.6 : 2.0);
   key.position.set(-3, 7, 5);
   key.castShadow = mode === 'cartridge' || mode === 'pocket';
-  key.shadow.mapSize.set(1024, 1024);
+  key.shadow.mapSize.setScalar(lowEnd ? 1024 : 2048);
   key.shadow.camera.left = key.shadow.camera.bottom = -8;
   key.shadow.camera.right = key.shadow.camera.top = 8;
   key.shadow.bias = -0.0002;
@@ -93,7 +100,16 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
         object.castShadow = false;
         object.material.attenuationDistance = 0.9;
         object.material.envMapIntensity = 1.2;
+        // three picks the blur level of what's behind a transmissive surface from its roughness, even the 0.05
+        // from blender blurs the board and lcd by about half a mip, so the clear plastic is perfectly smooth here
+        object.material.roughness = 0;
         shell.push(object.material);
+      }
+      if (['sps_silk', 'sps_trace'].includes(object.material.name)) {
+        // printed and etched layers sit a hair above the board, nudge them so they never flicker
+        object.material.polygonOffset = true;
+        object.material.polygonOffsetFactor = -1;
+        object.material.polygonOffsetUnits = -1;
       }
       if (object.name === 'sps_screen') screen = object;
       return;
@@ -130,6 +146,7 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
   const screenContext = screenCanvas.getContext('2d');
   const screenTexture = new THREE.CanvasTexture(screenCanvas);
   screenTexture.colorSpace = THREE.SRGBColorSpace;
+  screenTexture.anisotropy = maxAnisotropy;
   // gltf uvs already run top to bottom
   if (concept) screenTexture.flipY = false;
   const screenMaterial = new THREE.MeshBasicMaterial({ map: screenTexture, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
@@ -265,7 +282,7 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
         const mesh = new THREE.Mesh(geometry, material);
         mesh.castShadow = true; mesh.receiveShadow = true; group.add(mesh);
       }
-      const texture = new THREE.CanvasTexture(cartridgeLabel(item)); texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = 4;
+      const texture = new THREE.CanvasTexture(cartridgeLabel(item)); texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = maxAnisotropy;
       const face = new THREE.Mesh(new THREE.PlaneGeometry(1.08, 1.1), new THREE.MeshStandardMaterial({ map: texture, roughness: 0.55 }));
       face.rotation.x = -Math.PI / 2; face.position.set(-0.02, CART.top + 0.004, -0.06); face.receiveShadow = true; group.add(face);
       group.position.set(item.x, 0.08, item.z); group.rotation.y = -0.14;
@@ -309,13 +326,32 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
     if (mode === 'cartridge') { setCartridgeState('idle'); display(); }
     render();
   };
+  // frame times from real animations decide whether this machine can afford the current resolution
+  const frameTimes = [];
+  function trackFrame(delta) {
+    if (pixelRatio <= 1 || delta <= 0 || delta > 250) return;
+    frameTimes.push(delta);
+    if (frameTimes.length < 40) return;
+    const median = frameTimes.sort((a, b) => a - b)[20];
+    frameTimes.length = 0;
+    // a median over 28 ms is under about 35 fps, so drop half a step and keep going
+    if (median > 28) {
+      pixelRatio = Math.max(1, pixelRatio - 0.5);
+      renderer.setPixelRatio(pixelRatio);
+      canvas.dataset.pixelRatio = String(pixelRatio);
+      resize();
+    }
+  }
   function move(action, duration = 950, easing = progress => 1 - (1 - progress) ** 3) {
     stop();
     if (reduced()) { action(1); render(); return Promise.resolve(true); }
     return new Promise(resolve => {
       finishMotion = resolve;
       const start = performance.now();
+      let previous;
       const step = now => {
+        if (previous !== undefined) trackFrame(now - previous);
+        previous = now;
         const progress = Math.min((now - start) / duration, 1);
         action(easing(progress));
         render();
@@ -538,8 +574,9 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
     },
   };
 }
-// dot matrix lcd for the concept model: 160 x 120 logical pixels drawn as cells with a dark gap
-const LCD = { width: 160, height: 120, cell: 4 };
+// dot matrix lcd for the concept model: 160 x 120 logical pixels drawn as cells with a dark gap.
+// 8 px cells make a 1280 x 960 texture, sharp at 2x even when the handheld fills the viewer
+const LCD = { width: 160, height: 120, cell: 8 };
 const FONT = {
   A: '01110,10001,10001,11111,10001,10001,10001', B: '11110,10001,10001,11110,10001,10001,11110', C: '01110,10001,10000,10000,10000,10001,01110',
   D: '11100,10010,10001,10001,10001,10010,11100', E: '11111,10000,10000,11110,10000,10000,11111', F: '11111,10000,10000,11110,10000,10000,10000',
@@ -592,7 +629,8 @@ function paintLcd(context, title, progress) {
     rect(56, 80, 104, 81);
     write('MADE TO PLAY', 92, 1);
   }
-  const unit = cell - 1;
+  // keep the gap a quarter of a cell whatever the cell size
+  const unit = cell - Math.max(1, Math.round(cell / 4));
   context.fillStyle = '#050407';
   context.fillRect(0, 0, width * cell, height * cell);
   context.fillStyle = '#16131c';

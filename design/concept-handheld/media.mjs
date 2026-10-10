@@ -9,12 +9,13 @@ const media = fileURLToPath(new URL('../../.local/console-lab/media/', import.me
 async function web(name, output, height) {
   const trimmed = await sharp(`${renders}/${name}`).trim({ threshold: 1 }).toBuffer();
   const { data, info } = await sharp(trimmed).resize({ height, withoutEnlargement: true }).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-  await sharp(data, { raw: info }).webp({ quality: 86, alphaQuality: 90, effort: 6 }).toFile(`${media}${output}`);
+  await sharp(data, { raw: info }).webp({ quality: 90, alphaQuality: 92, effort: 6 }).toFile(`${media}${output}`);
   return { data, info };
 }
 
-await web('sps-handheld-hero.png', 'handheld-concept.webp', 1100);
-const { info } = await web('sps-handheld-front.png', 'handheld-concept-front.webp', 880);
+// the hero doubles as the stage poster, which shows at about 70% of the window height, so it needs ~2x that
+await web('sps-handheld-hero.png', 'handheld-concept.webp', 1600);
+const { info } = await web('sps-handheld-front.png', 'handheld-concept-front.webp', 1100);
 
 // the lcd active area is 68 x 51 mm centred 35.5 mm above the middle of the 90 x 150 mm body,
 // so its place in the trimmed front view comes straight from the model

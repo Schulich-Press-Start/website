@@ -45,6 +45,8 @@ const rail = document.querySelector('.cartridge-rail');
 const loadButton = document.querySelector('.load-cartridge');
 const loadLabel = loadButton.querySelector('span:last-child');
 const resetButton = document.querySelector('.view-toggle');
+// invisible copies of every blurb reserve the height of the longest one, so the page doesn't jump between tabs
+document.querySelector('.cartridge-copy-stack').insertAdjacentHTML('beforeend', cartridges.map(item => `<div class="cartridge-copy" aria-hidden="true" inert><span>SPS / ${item.label}</span><h2>${item.title}</h2><p>${item.description}</p></div>`).join(''));
 rail.innerHTML = cartridges.map((item,index)=>`<button class="cartridge-tab" type="button" data-cartridge="${item.id}" aria-pressed="${index===0}" style="--cart:${item.colour}"><span class="mini-cartridge" aria-hidden="true">${icon(item.icon,16)}</span><span class="cartridge-tab-text"><span class="cartridge-tab-index" aria-hidden="true">0${index+1}</span><span>${item.label}</span></span><span class="cartridge-tab-arrow">${icon('ArrowUpRight',16)}</span></button>`).join('');
 function select(index, focus = false) {
   if (loading || loaded) return;
