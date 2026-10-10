@@ -1071,8 +1071,14 @@ def patch_glb(path):
     for mat in document['materials']:
         mat.pop('doubleSided', None)
         if mat['name'] in ('sps_shell', 'sps_shell_back'):
-            mat.setdefault('extensions', {})['KHR_materials_volume'] = {
-                'thicknessFactor': WALL, 'attenuationDistance': 0.02, 'attenuationColor': list(srgb('#b061e6'))}
+            # web look for the smoky acrylic. three only draws the outside of each wall, so the tint that cycles
+            # builds up through both faces and the volume goes into a short attenuation distance instead.
+            # no roughness, three blurs whatever is behind a transmissive surface by its roughness, and a hair
+            # under full transmission adds the faint haze without blurring the board
+            mat['pbrMetallicRoughness']['roughnessFactor'] = 0.0
+            mat['extensions']['KHR_materials_transmission'] = {'transmissionFactor': 0.98}
+            mat['extensions']['KHR_materials_volume'] = {
+                'thicknessFactor': WALL, 'attenuationDistance': 0.0022, 'attenuationColor': list(srgb('#b061e6'))}
     used = document.setdefault('extensionsUsed', [])
     if 'KHR_materials_volume' not in used:
         used.append('KHR_materials_volume')

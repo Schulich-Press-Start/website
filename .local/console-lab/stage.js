@@ -95,16 +95,21 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
     object.castShadow = true;
     object.receiveShadow = true;
     if (concept) {
-      // the front shell and the clear back cover share the same treatment
+      // the front shell and the back cover share the same smoky acrylic
       if (object.material.name.startsWith('sps_shell')) {
-        // the shadow map treats transmission as opaque, so the clear shell would shade its own insides
+        // the shadow map treats transmission as opaque, so the shell would shade its own insides
         object.castShadow = false;
-        object.material.attenuationDistance = 0.9;
-        object.material.envMapIntensity = 1.2;
-        // three picks the blur level of what's behind a transmissive surface from its roughness, even the 0.05
-        // from blender blurs the board and lcd by about half a mip, so the clear plastic is perfectly smooth here
-        object.material.roughness = 0;
-        if (!shell.includes(object.material)) shell.push(object.material);
+        // the posts share the front shell's material, so only set each material up once
+        if (!shell.includes(object.material)) {
+          // thickness scales with the model but attenuation distance is in world units, so scale it the same way
+          // or the tint baked into the glb thins out to nothing at site size
+          object.material.attenuationDistance *= normalised.scale.x;
+          // scene.environment ignores envMapIntensity, so the shell gets its own copy of the room to turn down.
+          // at full strength it mirrors the bright room as a pale veil and the plastic reads glass clear, not smoky
+          object.material.envMap = environmentMap.texture;
+          object.material.envMapIntensity = 0.5;
+          shell.push(object.material);
+        }
       }
       if (['sps_silk', 'sps_trace'].includes(object.material.name)) {
         // printed and etched layers sit a hair above the board, nudge them so they never flicker
