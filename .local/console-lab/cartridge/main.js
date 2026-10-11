@@ -1,4 +1,4 @@
-import { setup, icon, tone, openProgram, animate, data } from '../common.js';
+import { setup, icon, tone, openProgram, animate, data, countWord } from '../common.js';
 
 let finish = 'purple';
 if (import.meta.env.DEV) {
@@ -30,9 +30,9 @@ if (finish === 'purple' || finish === 'white-grid') {
 
 const cartridges = [
   { id:'handheld', title:'The build.', label:'Hardware', colour:'#784ac3', icon:'Gamepad2', description:'Explore the handheld we are building.' },
-  { id:'crew', title:'The teams.', label:'Teams', colour:'#578b7a', icon:'Users', description:'Six teams building one handheld. Meet the leads and see what each team does.' },
+  { id:'crew', title:'The teams.', label:'Teams', colour:'#578b7a', icon:'Users', description:`${countWord(data.divisions.length)} teams building one handheld. Meet the leads and see what each team does.` },
   { id:'arcade', title:'Brick Break', label:'Arcade', colour:'#d95340', icon:'Sparkles', description:'Take a break with a quick game.' },
-  { id:'join', title:'Your turn.', label:'Join SPS', colour:'#dfab36', icon:'Send', description:'Find your place on the team.' },
+  { id:'inside', title:'Inside the handheld.', label:'Inside', colour:'#dfab36', icon:'Layers', description:'Pull the handheld apart layer by layer and see which team builds each part.' },
 ];
 let stage;
 let selected = 0;

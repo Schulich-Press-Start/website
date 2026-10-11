@@ -224,8 +224,16 @@ try {
             await page.getByRole('button', { name: 'Pause game', exact: true }).click();
             await expect(page.locator('[data-game-state]')).toHaveText('Paused');
             await page.keyboard.press('Escape');
-            await open('join');
-            await expect(page.getByRole('link', { name: 'Apply to SPS' })).toHaveAttribute('href', data.site.applicationUrl);
+            if (theme === 'cartridge') {
+              // the cartridge theme swapped its join cartridge for inside the handheld, the other prototypes still have join
+              await open('inside');
+              await expect(page.locator('#panel-title')).toHaveText('Inside the handheld.');
+              await expect(page.locator('.inside-scene canvas')).toHaveAttribute('data-exploded', 'true', { timeout: 15000 });
+              await expect(page.locator('.inside-layers [data-layer]')).toHaveCount(6);
+            } else {
+              await open('join');
+              await expect(page.getByRole('link', { name: 'Apply to SPS' })).toHaveAttribute('href', data.site.applicationUrl);
+            }
             await page.keyboard.press('Escape');
             await page.getByRole('button', { name: 'System settings' }).click();
             const switcher = page.getByRole('navigation', { name: 'Switch prototype' });
