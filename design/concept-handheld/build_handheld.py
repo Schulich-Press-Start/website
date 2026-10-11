@@ -31,6 +31,7 @@ DPAD = Vector((-0.0215, -0.0215))     # x, z
 ABXY = Vector((0.0215, -0.0215))
 SCREEN_Z = 0.0355
 PILL_Z = -0.0615
+MCU = Vector((-0.0200, -0.0458))      # stm32h743 lqfp-100, lower left under the d-pad
 # the shell's solidify grows outward, so its outer skin is WALL bigger than W x H.
 # the enclosure is a clear front shell plus a clear back cover, the double sided board sits inside both
 BACK_IN = D / 2              # where the shell walls stop and the back cover starts
@@ -117,6 +118,17 @@ led_white = material('sps_led_white', '#ffffff', rough=0.3, emission='#ffffff', 
 led_red = material('sps_led_red', '#ff4a4a', rough=0.3, emission='#ff3b3b', strength=6)
 led_green = material('sps_led_green', '#5dff8a', rough=0.3, emission='#4dff7c', strength=6)
 jst_mat = material('sps_jst', '#f1e8d6', rough=0.5)
+mark_mat = material('sps_mark', '#b9b3c7', rough=0.6)
+actuator_mat = material('sps_actuator', '#2b2832', rough=0.5)
+latch_mat = material('sps_latch', '#4a3a30', rough=0.45)
+pouch_mat = material('sps_battery_pouch', '#c8c7ce', rough=0.34, metal=0.55)
+label_mat = material('sps_battery_label', '#f1edf6', rough=0.62)
+label_band_mat = material('sps_battery_band', '#784ac3', rough=0.5)
+label_ink_mat = material('sps_battery_ink', '#2a2236', rough=0.6)
+kapton_mat = material('sps_kapton', '#d79a2b', rough=0.35)
+pcm_mat = material('sps_battery_pcm', '#1f6b45', rough=0.4)
+wire_red = material('sps_wire_red', '#d1262d', rough=0.45)
+wire_black = material('sps_wire_black', '#19171d', rough=0.45)
 
 
 # ---------- screen texture ----------
@@ -277,6 +289,9 @@ def prism_z(name, outline, z0, z1, mat, centre=(0, 0)):
 
 
 USB_Y = -0.0002
+# 3.5 mm jack barrel axis and the micro sd card slot, both on the board's underside
+JACK_X, JACK_Y = 0.0240, BOARD_BACK + 0.0025
+SD_Y, SD_Z = BOARD_BACK + 0.0008, -0.0145
 
 
 def apply_all(obj):
@@ -326,6 +341,9 @@ for x in (-0.0105, 0.0105):
 cutters.append(box('cut_slot', (0.052, 0.0112, 0.006), (0, 0.0062, H / 2 - 0.001), shell_mat))
 # usb-c port through the bottom wall, rounded like the real receptacle
 cutters.append(prism_z('cut_usb', rounded_outline(0.0098, 0.0040, 0.0020, 6), -H / 2 - WALL - 0.002, -H / 2 + 0.002, shell_mat, (0, USB_Y)))
+# round hole for the headphone jack next to it, and a slot in the left wall for the micro sd card
+cutters.append(prism_z('cut_jack', [(0.0030 * math.cos(2 * math.pi * i / 28), 0.0030 * math.sin(2 * math.pi * i / 28)) for i in range(28)], -H / 2 - WALL - 0.002, -H / 2 + 0.002, shell_mat, (JACK_X, JACK_Y)))
+cutters.append(box('cut_sd', (0.0050, 0.0018, 0.0120), (-W / 2 - WALL / 2, SD_Y, SD_Z), shell_mat))
 for cutter in cutters:
     apply_all(cutter)
     mod = shell.modifiers.new('cut', 'BOOLEAN')
@@ -383,7 +401,7 @@ def on_board(height):
 def keepout(x, z):
     # areas covered by the screen, pads, chips and pills where traces would be hidden or look messy
     zones = [((0, SCREEN_Z), (0.039, 0.031)), (DPAD, (0.0150, 0.0150)), (ABXY, (0.0160, 0.0160)), ((0, -0.0205), (0.0062, 0.0062)),
-             ((-0.0165, -0.0450), (0.0075, 0.0075)), ((0.0215, -0.0455), (0.0085, 0.0085))]
+             ((MCU.x, MCU.y), (0.0095, 0.0095)), ((0.0215, -0.0455), (0.0085, 0.0085))]
     for (cx, cz), (hx, hz) in zones:
         if abs(x - cx) < hx and abs(z - cz) < hz:
             return True
@@ -418,7 +436,7 @@ traces = join(traces, 'sps_traces')
 
 # silkscreen marks: outlines around the parts and a little label strip
 silk = []
-for cx, cz, w, h in ((0, -0.0205, 0.0122, 0.0122), (-0.0165, -0.045, 0.0150, 0.0150), (0.0215, -0.0455, 0.0170, 0.0170)):
+for cx, cz, w, h in ((0, -0.0205, 0.0122, 0.0122), (MCU.x, MCU.y, 0.0182, 0.0182), (0.0215, -0.0455, 0.0170, 0.0170)):
     for sx, sz, px, pz in ((w, 0.0003, 0, h / 2), (w, 0.0003, 0, -h / 2), (0.0003, h, w / 2, 0), (0.0003, h, -w / 2, 0)):
         silk.append(box('silk', (sx, 0.00004, sz), (cx + px, top - 0.00002, cz + pz), silk_mat))
 for i in range(6):
@@ -439,10 +457,8 @@ def qfp(cx, cz, size, height, pins_per_side, pitch):
             pins.append(box('pin', (sx, 0.00025, sz), (cx + px, top - 0.000125, cz + pz), gold_mat))
 
 
-qfp(0.0, -0.0205, 0.0092, 0.0011, 10, 0.00075)        # main mcu between the controls
-qfp(-0.0165, -0.0450, 0.0118, 0.0013, 12, 0.00080)    # the bigger chip lower left
+qfp(0.0, -0.0205, 0.0092, 0.0011, 10, 0.00075)        # audio codec between the controls
 chips.append(box('chip', (0.0060, 0.0010, 0.0042), (-0.0285, top - 0.0005, -0.0340), chip_mat, bevel=0.0002))
-chips.append(box('chip', (0.0050, 0.0009, 0.0050), (-0.0290, top - 0.00045, -0.0520), chip_mat, bevel=0.0002))
 chips.append(box('chip', (0.0050, 0.0009, 0.0035), (0.0040, top - 0.00045, -0.0400), chip_mat, bevel=0.0002))
 chips.append(box('chip', (0.0070, 0.0012, 0.0050), (0.0080, top - 0.0006, -0.0530), chip_mat, bevel=0.0002))
 chips.append(box('chip', (0.0040, 0.0008, 0.0040), (0.0300, top - 0.0004, -0.0060), chip_mat, bevel=0.0002))
@@ -460,6 +476,78 @@ for _ in range(150):
         w, h = h, w
     parts.append(box('part', (w, 0.0005, h), (x, top - 0.00025, z), part_mat if random.random() < 0.55 else chip_mat))
     pins.append(box('pin', (w * 0.22 if w > h else w, 0.00052, h if w > h else h * 0.22), (x - (w * 0.39 if w > h else 0), top - 0.00026, z - (0 if w > h else h * 0.39)), metal_mat))
+
+
+def front_text(body, x, z, y, size, align='CENTER'):
+    # laser marked text on top of a part, readable from the front
+    curve = bpy.data.curves.new('mark_text', 'FONT')
+    curve.body = body
+    curve.size = size
+    curve.align_x = align
+    curve.align_y = 'CENTER'
+    curve.resolution_u = 2
+    obj = bpy.data.objects.new('mark_text', curve)
+    scene.collection.objects.link(obj)
+    obj.location = (x, y, z)
+    obj.rotation_euler = (math.pi / 2, 0, 0)
+    front_texts.append(obj)
+    return obj
+
+
+def cap0402(x, z, vertical=True, size=(0.0010, 0.0005)):
+    w, h = (size[1], size[0]) if vertical else size
+    parts.append(box('part', (w, 0.0005, h), (x, top - 0.00025, z), part_mat))
+    for side in (-1, 1):
+        ex, ez = (x, z + side * h * 0.39) if vertical else (x + side * w * 0.39, z)
+        pins.append(box('pin', (w if vertical else w * 0.22, 0.00052, h * 0.22 if vertical else h), (ex, top - 0.00026, ez), metal_mat))
+
+
+front_texts = []
+# the stm32h743 in a 14 mm lqfp-100: 25 leads a side at 0.5 mm, pin one dot, laser markings
+mcu_body, mcu_height = 0.0140, 0.0014
+mcu = box('sps_mcu', (mcu_body, mcu_height, mcu_body), (MCU.x, top - mcu_height / 2 - 0.0002, MCU.y), chip_mat, bevel=0.0003)
+mcu_top = top - mcu_height - 0.0002
+start = -(25 - 1) * 0.0005 / 2
+for i in range(25):
+    o = start + i * 0.0005
+    for px, pz, sx, sz in ((o, mcu_body / 2 + 0.0005, 0.00022, 0.0010), (o, -mcu_body / 2 - 0.0005, 0.00022, 0.0010),
+                           (mcu_body / 2 + 0.0005, o, 0.0010, 0.00022), (-mcu_body / 2 - 0.0005, o, 0.0010, 0.00022)):
+        pins.append(box('lead', (sx, 0.00016, sz), (MCU.x + px, top - 0.00022, MCU.y + pz), metal_mat))
+front_text('STM32H743', MCU.x, MCU.y + 0.0021, mcu_top - 0.00005, 0.0016)
+front_text('VIT6', MCU.x, MCU.y - 0.0003, mcu_top - 0.00005, 0.0013)
+front_text('2632  CHN', MCU.x, MCU.y - 0.0026, mcu_top - 0.00005, 0.0010)
+pin_one = cylinder('pin_one', 0.00055, mcu_top - 0.00004, mcu_top + 0.0001, (MCU.x - mcu_body / 2 + 0.0016, MCU.y + mcu_body / 2 - 0.0016), mark_mat, 14)
+# decoupling caps on every side of the mcu, right where the power pins come out
+for d in (-0.0030, 0.0030):
+    cap0402(MCU.x - 0.0099, MCU.y + d)
+    cap0402(MCU.x + 0.0099, MCU.y + d)
+    cap0402(MCU.x + d, MCU.y + 0.0099, vertical=False)
+    cap0402(MCU.x + d, MCU.y - 0.0099, vertical=False)
+# 25 mhz crystal in a metal can with its two load caps
+parts.append(box('crystal', (0.0032, 0.0008, 0.0025), (-0.0350, top - 0.0004, -0.0440), metal_mat, bevel=0.0001))
+for d in (-0.0011, 0.0011):
+    cap0402(-0.0350 + d, -0.0412)
+# the codec between the controls gets its own marking
+front_text('ES8388', 0.0, -0.0199, top - 0.0011 - 0.0002 - 0.00005, 0.0012)
+front_text('ES 2629', 0.0, -0.0215, top - 0.0011 - 0.0002 - 0.00005, 0.0009)
+bpy.ops.object.select_all(action='DESELECT')
+for obj in front_texts:
+    obj.select_set(True)
+bpy.context.view_layer.objects.active = front_texts[0]
+bpy.ops.object.convert(target='MESH')
+for obj in front_texts:
+    obj.data.materials.clear()
+    obj.data.materials.append(mark_mat)
+marks = join(front_texts + [pin_one], 'sps_marks')
+bm = bmesh.new()
+bm.from_mesh(marks.data)
+for face in bm.faces:
+    face.normal_update()
+    if face.normal.y > 0.5:
+        face.normal_flip()
+bm.to_mesh(marks.data)
+bm.free()
+
 chips = join(chips, 'sps_chips')
 parts = join(parts, 'sps_parts')
 
@@ -522,16 +610,46 @@ screen.data.materials.append(screen_mat)
 # flex ribbon from the screen down onto the board, plus its connector
 flex = box('sps_flex', (0.030, 0.0003, 0.0060), (0, PCB_FRONT - 0.0012, SCREEN_Z - 0.0585 / 2 - 0.0026), flex_mat)
 flex_conn = box('sps_flex_conn', (0.034, 0.0012, 0.0030), (0, PCB_FRONT - 0.0006, SCREEN_Z - 0.0585 / 2 - 0.0060), chip_mat, bevel=0.0002)
+# zif latch bar on the fpc connector, the flex tucks in under it
+flex_latch = box('sps_flex_latch', (0.0322, 0.0005, 0.0011), (0, PCB_FRONT - 0.00145, SCREEN_Z - 0.0585 / 2 - 0.0071), latch_mat, bevel=0.0001)
 
 
 # ---------- controls ----------
 
 button_bottom = INNER_FRONT + 0.0010
-pad_front = button_bottom - 0.0002
-pads = [prism('pad', rounded_outline(0.0265, 0.0265, 0.0045, 6), pad_front, top, pad_mat, DPAD, bevel=0.0006),
-        cylinder('pad', 0.0145, pad_front, top, ABXY, pad_mat, 48, bevel=0.0006)]
-pads += [prism('pad', rounded_outline(0.0200, 0.0092, 0.0046, 6), pad_front, top, pad_mat, (x, PILL_Z), bevel=0.0005) for x in (-0.0105, 0.0105)]
+PLATE_T = 0.0012
+SWITCH_H = 0.0043   # 6 x 6 mm tact switch: body, metal top plate and the round actuator
+dpad_switches = [(DPAD.x + dx, DPAD.y + dz) for dx, dz in ((0.0075, 0), (-0.0075, 0), (0, 0.0075), (0, -0.0075))]
+abxy_switches = [(ABXY.x + dx, ABXY.y + dz) for dx, dz in ((0, 0.0083), (0.0083, 0), (0, -0.0083), (-0.0083, 0))]
+pill_switches = [(x, PILL_Z) for x in (-0.0105, 0.0105)]
+SWITCHES = dpad_switches + abxy_switches + pill_switches
+
+# thin silicone gaskets keep the old pad shapes, every switch pokes through its own hole
+pads = [prism('pad', rounded_outline(0.0265, 0.0265, 0.0045, 6), top - PLATE_T, top, pad_mat, DPAD, bevel=0.0004),
+        cylinder('pad', 0.0145, top - PLATE_T, top, ABXY, pad_mat, 48, bevel=0.0004)]
+pads += [prism('pad', rounded_outline(0.0200, 0.0092, 0.0046, 6), top - PLATE_T, top, pad_mat, (x, PILL_Z), bevel=0.0004) for x in (-0.0105, 0.0105)]
 pads = join(pads, 'sps_pads')
+for x, z in SWITCHES:
+    hole = box('cut_switch_hole', (0.0066, 0.004, 0.0066), (x, top - PLATE_T / 2, z), pad_mat)
+    mod = pads.modifiers.new('hole', 'BOOLEAN'); mod.operation = 'DIFFERENCE'; mod.solver = 'EXACT'; mod.object = hole
+    apply_all(pads)
+    bpy.data.objects.remove(hole, do_unlink=True)
+for poly in pads.data.polygons:
+    if abs(poly.normal.y) > 0.9:
+        poly.use_smooth = False
+
+switch_dark, switch_metal = [], []
+for x, z in SWITCHES:
+    switch_dark.append(box('switch', (0.0060, 0.0026, 0.0060), (x, top - 0.0013, z), chip_mat, bevel=0.0002))
+    switch_metal.append(box('switch_plate', (0.0062, 0.0003, 0.0062), (x, top - 0.00275, z), metal_mat))
+    switch_dark.append(cylinder('actuator', 0.00175, top - SWITCH_H, top - 0.0029, (x, z), actuator_mat, 20, bevel=0.0002))
+    for sx in (-1, 1):
+        for sz in (-1, 1):
+            switch_metal.append(box('switch_leg', (0.0010, 0.0003, 0.0007), (x + sx * 0.0034, top - 0.00015, z + sz * 0.0022), metal_mat))
+switches = join(switch_dark, 'sps_switches')
+switch_metal = join(switch_metal, 'sps_switch_metal')
+# each cap has a stem that rests on its switch
+stem_bottom = top - SWITCH_H - 0.0001
 
 dpad = prism('sps_dpad', cross_outline(0.0112, 0.0041), FRONT - 0.0026, button_bottom, button_mat, DPAD, bevel=0.0009, bevel_segments=3)
 # shallow pivot dimple in the middle of the d-pad
@@ -539,11 +657,14 @@ dimple = cylinder('cut_dimple', 0.0022, FRONT - 0.0034, FRONT - 0.0021, DPAD, bu
 mod = dpad.modifiers.new('dimple', 'BOOLEAN'); mod.operation = 'DIFFERENCE'; mod.solver = 'EXACT'; mod.object = dimple
 apply_all(dpad)
 bpy.data.objects.remove(dimple, do_unlink=True)
+dpad = join([dpad] + [cylinder('stem', 0.0011, button_bottom, stem_bottom, (x, z), button_mat, 16) for x, z in dpad_switches], 'sps_dpad')
 
 buttons = [cylinder('btn', 0.0041, FRONT - 0.0028, button_bottom, (ABXY.x + dx, ABXY.y + dz), button_mat, 32, bevel=0.0012)
            for dx, dz in ((0, 0.0083), (0.0083, 0), (0, -0.0083), (-0.0083, 0))]
+buttons += [cylinder('stem', 0.0012, button_bottom, stem_bottom, (x, z), button_mat, 16) for x, z in abxy_switches]
 buttons = join(buttons, 'sps_buttons')
 pills = [prism('pill', rounded_outline(0.0170, 0.0062, 0.0031, 8), FRONT - 0.0016, button_bottom, pill_mat, (x, PILL_Z), bevel=0.0010, bevel_segments=3) for x in (-0.0105, 0.0105)]
+pills += [cylinder('stem', 0.0012, button_bottom, stem_bottom, (x, z), pill_mat, 16) for x, z in pill_switches]
 pills = join(pills, 'sps_pills')
 
 # screws on the front face, tinted metal like the reference
@@ -656,7 +777,7 @@ def free(x, z):
     return not any(x0 < x < x1 and z0 < z < z1 for x0, x1, z0, z1 in keepouts)
 
 
-def label(body, u, v, size=0.00095, align='CENTER'):
+def label(body, u, v, size=0.00095, align='CENTER', y=None):
     curve = bpy.data.curves.new('silk_text', 'FONT')
     curve.body = body
     curve.size = size
@@ -665,9 +786,10 @@ def label(body, u, v, size=0.00095, align='CENTER'):
     curve.resolution_u = 4 if size > 0.004 else 2
     obj = bpy.data.objects.new('silk_text', curve)
     scene.collection.objects.link(obj)
-    obj.location = (U(u), Y_SILK, v)
+    obj.location = (U(u), Y_SILK if y is None else y, v)
     obj.rotation_euler = (math.pi / 2, 0, math.pi)   # lie on the board, readable from behind
     texts.append(obj)
+    return obj
 
 
 def via(x, z):
@@ -694,7 +816,7 @@ def track(points_uv, width=0.00026, keepout=True):
             keepouts.append((min(x0, x1) - 0.0005, max(x0, x1) + 0.0005, min(z0, z1) - 0.0005, max(z0, z1) + 0.0005))
 
 
-def bus(points_uv, count, pitch=0.00062, width=0.00024):
+def bus(points_uv, count, pitch=0.00062, width=0.00024, end_vias=False):
     # parallel tracks that keep their spacing through the bends
     for k in range(count):
         offset = (k - (count - 1) / 2) * pitch
@@ -713,6 +835,8 @@ def bus(points_uv, count, pitch=0.00062, width=0.00024):
                 scale = 1 / max(math.cos((b - a) / 2), 0.5)
             shifted.append((u + nu * offset * scale, v + nv * offset * scale))
         track(shifted, width)
+        if end_vias:
+            via(U(shifted[-1][0]), shifted[-1][1])
 
 
 def chip_resistor(u, v, horizontal=True, size=(0.0016, 0.0008), tag=None, cap=False):
@@ -796,27 +920,15 @@ def test_point(u, v, name, net):
     keepouts.append((U(u - 0.0012), U(u - 0.0080), v - 0.0008, v + 0.0008))
 
 
-# things that already live on this side of the board: the cartridge connector up top and the usb-c receptacle
+# parts that already live on this side of the board: the cartridge connector up top and the usb-c receptacle
 keepouts.append((-0.0300, 0.0300, 0.0550, 0.0680))
 keepouts.append((-0.0065, 0.0065, -BH / 2, -BH / 2 + 0.0040))
 label('J1 CART', -0.0115, 0.0532, 0.0009)
 
-# stitching vias around the edge, like a ground ring
-edge = rounded_outline(BW - 0.0044, BH - 0.0044, BR - 0.0022, 6)
-lengths = [math.dist(edge[i], edge[(i + 1) % len(edge)]) for i in range(len(edge))]
-step, travelled, target = 0.0042, 0.0, 0.0
-for i, length in enumerate(lengths):
-    (x0, z0), (x1, z1) = edge[i], edge[(i + 1) % len(edge)]
-    while target <= travelled + length:
-        t = (target - travelled) / length
-        x, z = x0 + (x1 - x0) * t, z0 + (z1 - z0) * t
-        near_screw = any(math.dist((x, z), screw) < 0.0050 for screw in SCREWS)
-        under_connector = abs(x) < 0.0300 and z > 0.0540
-        bottom_ports = z < -BH / 2 + 0.006 and (abs(x) < 0.0065 or abs(x + 0.020) < 0.0055)
-        if not near_screw and not under_connector and not bottom_ports:
-            via(x, z)
-        target += step
-    travelled += length
+# the battery bay. the pouch sits on a foam pad over this patch, so nothing tall goes under it
+BAT = {'u0': -0.0235, 'u1': 0.0235, 'v0': -0.0540, 'v1': -0.0095}
+keepouts.append((U(BAT['u1'] + 0.0010), U(BAT['u0'] - 0.0010), BAT['v0'] - 0.0035, BAT['v1'] + 0.0010))
+silk2d.outline(U(0.0), (BAT['v0'] + BAT['v1']) / 2, BAT['u1'] - BAT['u0'] + 0.0012, BAT['v1'] - BAT['v0'] + 0.0012, Y_SILK, 0.00018)
 
 # plated mounting holes, the shell posts come through them. rings get clipped where the hole sits near the edge
 for x, z in SCREWS:
@@ -859,11 +971,11 @@ silk2d.outline(U(plate_u), plate_v, plate_w - 0.0016, plate_h - 0.0016, Y_SILK, 
 keep(U(plate_u), plate_v, plate_w, plate_h, 0.001)
 label('SCHULICH PRESS START', 0.0, 0.0118, 0.0021)
 label('GEN 1 / REV A', 0.0, 0.0047, 0.0030)
-label('MADE TO PLAY  2026', 0.0, -0.0010, 0.0013)
+label('MADE BY STUDENTS  2026', 0.0, -0.0010, 0.0013)
 keepouts.append((-0.0165, 0.0165, -0.0030, 0.0145))
 
-# swd header for flashing, gold through hole pads with a square pin one
-j3_u, j3_v = -0.0165, -0.0215
+# swd header for flashing, top of the left column, gold through hole pads with a square pin one
+j3_u, j3_v = -0.0310, -0.0035
 for r in range(2):
     for c in range(3):
         x, z = U(j3_u - 0.00254 + c * 0.00254), j3_v + (0.00127 if r == 0 else -0.00127)
@@ -873,72 +985,39 @@ for r in range(2):
             gold.disc(x, z, 0.00085, Y_PAD, 16)
         dark.disc(x, z, 0.00045, Y_HOLE, 12)
 silk2d.outline(U(j3_u), j3_v, 0.0080, 0.0054, Y_SILK)
-silk2d.up([(U(j3_u - 0.0048), j3_v + 0.0029), (U(j3_u - 0.0048), j3_v + 0.0013), (U(j3_u - 0.0060), j3_v + 0.0021)], Y_SILK)
 keep(U(j3_u), j3_v, 0.0080, 0.0054)
-label('J3', j3_u, j3_v + 0.0040, 0.001)
-label('SWD', j3_u, j3_v - 0.0040, 0.0009)
+label('J3 SWD', j3_u + 0.0058, j3_v, 0.0009, 'LEFT')
 
-# test points down the side for bring up
+# test points down the left side for bring up
 tps = [('TP1', 'VBAT'), ('TP2', 'VSYS'), ('TP3', '3V3'), ('TP4', 'GND'), ('TP5', 'SWDIO'), ('TP6', 'SWCLK')]
 tp_spots = [(-0.0300, -0.0120 - i * 0.0052) for i in range(len(tps))]
 for (name, net), (u, v) in zip(tps, tp_spots):
     test_point(u, v, name, net)
+    track([(u + 0.0011, v), (u + 0.0038, v)], 0.0005 if net in ('VBAT', 'GND') else 0.0003)
+    via(U(u + 0.0042), v)
 
-# chips
-gull(0.0140, -0.0190, 0.0049, 0.0039, 4, 0.00127, tag='U5')
-qfn(0.0165, -0.0405, 0.0030, 4, 0.0005, tag='U6')
-sot23(0.0035, -0.0470, five=True, tag='U7')
-sot23(0.0270, -0.0285, tag='Q1')
+# micro sd socket on the right edge, the card slides in through the slot in the side wall
+sd_u0, sd_u1, sd_v0, sd_v1 = 0.0265, 0.0410, -0.0205, -0.0085
+metal.block(U((sd_u0 + sd_u1) / 2), (sd_v0 + sd_v1) / 2, sd_u1 - sd_u0, sd_v1 - sd_v0, BOARD_BACK, BOARD_BACK + 0.0015)
+for k in range(3):
+    metal.block(U(sd_u0 + 0.0030 + k * 0.0042), (sd_v0 + sd_v1) / 2, 0.0006, sd_v1 - sd_v0 - 0.0030, BOARD_BACK + 0.0015, BOARD_BACK + 0.00165)
+dark.block(U(sd_u1 - 0.0002), (sd_v0 + sd_v1) / 2, 0.0004, 0.0110, BOARD_BACK + 0.0003, BOARD_BACK + 0.0012)
+for v in (sd_v0 + 0.0008, sd_v1 - 0.0008):
+    for u in (sd_u0 + 0.0010, sd_u1 - 0.0016):
+        gold.rect(U(u), v - 0.0006 if v < -0.015 else v + 0.0006, 0.0016, 0.0012, Y_PAD)
+keep(U((sd_u0 + sd_u1) / 2), (sd_v0 + sd_v1) / 2, sd_u1 - sd_u0, sd_v1 - sd_v0 + 0.002)
+label('J6 SD', (sd_u0 + sd_u1) / 2, sd_v0 - 0.0016, 0.0009)
 
-# passives, decoupling next to the chips and a couple of tidy rows
-chip_resistor(0.0093, -0.0160, False, cap=True, tag='C1')
-chip_resistor(0.0190, -0.0160, False, cap=True, tag='C2')
-chip_resistor(0.0110, -0.0405, False, (0.0010, 0.0005), cap=True, tag='C3')
-chip_resistor(0.0220, -0.0405, False, (0.0010, 0.0005), cap=True, tag='C4')
-chip_resistor(0.0165, -0.0350, True, (0.0010, 0.0005), tag='R6')
-chip_resistor(0.0080, -0.0470, False, cap=True, tag='C5')
-chip_resistor(-0.0010, -0.0470, False, cap=True, tag='C6')
-for i in range(5):
-    chip_resistor(-0.0060 + i * 0.0028, -0.0310, False, tag=f'R{i + 1}')
-for i in range(4):
-    chip_resistor(-0.0080 + i * 0.0030, -0.0395, False, (0.0020, 0.0012), cap=True, tag=f'C{i + 7}')
-chip_resistor(0.0265, -0.0350, True, tag='R7')
-chip_resistor(0.0265, -0.0225, True, tag='R8')
-# diode next to the battery connector
-bodies.block(U(0.0240), -0.0560, 0.0027, 0.0016, BOARD_BACK, BOARD_BACK + 0.0010)
-metal.block(U(0.0240) + 0.0009, -0.0560, 0.0004, 0.00162, BOARD_BACK, BOARD_BACK + 0.00102)
-for side in (-1, 1):
-    gold.rect(U(0.0240) + side * 0.0019, -0.0560, 0.0012, 0.0012, Y_PAD)
-keep(U(0.0240), -0.0560, 0.0050, 0.0020)
-label('D1', 0.0240, -0.0538, 0.0008)
-
-# battery connector on the bottom edge of the board, a right angle jst facing the bottom wall. it stays inside the shell
-bt_x = U(0.0200)
-mouth = -BH / 2 + 0.0002
-jst.block(bt_x, mouth + 0.0026, 0.0060, 0.0052, BOARD_BACK, BOARD_BACK + 0.0045)
-# latch window and the moulded ribs on top of the housing
-dark.block(bt_x, mouth + 0.0030, 0.0030, 0.0014, BOARD_BACK + 0.0040, BOARD_BACK + 0.00455)
-for side in (-1, 1):
-    jst.block(bt_x + side * 0.0024, mouth + 0.0040, 0.0006, 0.0018, BOARD_BACK + 0.0045, BOARD_BACK + 0.0049)
-dark.block(bt_x, mouth + 0.0002, 0.0044, 0.0006, BOARD_BACK + 0.0008, BOARD_BACK + 0.0036)
-for side in (-1, 1):
-    metal.block(bt_x + side * 0.0010, mouth + 0.0004, 0.0005, 0.0006, BOARD_BACK + 0.0018, BOARD_BACK + 0.0023)
-    metal.block(bt_x + side * 0.0036, mouth + 0.0040, 0.0012, 0.0016, BOARD_BACK, BOARD_BACK + 0.0006)
-    gold.rect(bt_x + side * 0.0036, mouth + 0.0040, 0.0016, 0.0022, Y_PAD)
-keep(bt_x, mouth + 0.0026, 0.0090, 0.0060)
-label('+', 0.0172, mouth + 0.0068, 0.0012)
-label('-', 0.0228, mouth + 0.0068, 0.0012)
-label('BT1', 0.0110, mouth + 0.0036, 0.0010)
-label('LIPO 3.7V', 0.0110, mouth + 0.0019, 0.0008)
-keepouts.append((U(0.0150), U(0.0070), mouth, mouth + 0.0045))
-
-# usb callout above the receptacle at the bottom edge
-label('USB-C 5V', 0.0, -BH / 2 + 0.0078, 0.00095)
-silk2d.up([(U(-0.0011), -BH / 2 + 0.0062), (U(0.0011), -BH / 2 + 0.0062), (U(0.0), -BH / 2 + 0.0047)], Y_SILK)
-keepouts.append((-0.0075, 0.0075, -BH / 2, -BH / 2 + 0.0090))
+# the rest of the right column: transistor, a couple of resistors and the spi flash
+sot23(0.0320, -0.0280, tag='Q1')
+chip_resistor(0.0300, -0.0335, True, tag='R8')
+chip_resistor(0.0365, -0.0335, True, tag='R7')
+gull(0.0320, -0.0425, 0.0049, 0.0039, 4, 0.00127, tag='U5')
+chip_resistor(0.0380, -0.0425, False, cap=True)
+label('W25Q128', 0.0320, -0.0425, 0.0007, y=BOARD_BACK + 0.0015 + 0.00004)
 
 # data matrix area, a random 14 x 14 code with the solid l finder and the clock edges
-dm_u, dm_v, cell = -0.0195, -0.0570, 0.00036
+dm_u, dm_v, cell = -0.0315, -0.0480, 0.00036
 random_state = random.getstate()
 for i in range(14):
     for j in range(14):
@@ -947,25 +1026,83 @@ for i in range(14):
             silk2d.rect(U(dm_u - 7 * cell + i * cell), dm_v - 7 * cell + j * cell, cell * 1.02, cell * 1.02, Y_SILK)
 keep(U(dm_u), dm_v, 14 * cell, 14 * cell, 0.001)
 
+# 3.5 mm headphone jack on the bottom edge, its barrel lines up with the round hole in the bottom wall
+jack = box('sps_jack', (0.0060, 0.0050, 0.0085), (JACK_X, BOARD_BACK + 0.0025, -0.0688), chip_mat, bevel=0.0003)
+barrel = prism_z('jack_barrel', [(0.0025 * math.cos(2 * math.pi * i / 24), 0.0025 * math.sin(2 * math.pi * i / 24)) for i in range(24)], -H / 2 - WALL + 0.0004, -0.0728, chip_mat, (JACK_X, JACK_Y))
+socket = prism_z('jack_socket', [(0.00175 * math.cos(2 * math.pi * i / 20), 0.00175 * math.sin(2 * math.pi * i / 20)) for i in range(20)], -H / 2 - WALL + 0.00035, -H / 2 - WALL + 0.0006, lcd_frame_mat, (JACK_X, JACK_Y))
+jack = join([jack, barrel, socket], 'sps_jack')
+for side in (-1, 1):
+    for z in (-0.0660, -0.0705):
+        metal.block(JACK_X + side * 0.0034, z, 0.0010, 0.0012, BOARD_BACK, BOARD_BACK + 0.0004)
+keep(JACK_X, -0.0680, 0.0072, 0.0090)
+label('J5 AUDIO', U(JACK_X), -0.0620, 0.0008)
+
+# power stage along the bottom: charger, buck regulator, its inductor and the bulk caps
+qfn(0.0080, -0.0645, 0.0030, 4, 0.0005, tag=None)
+label('U6', 0.0080, -0.0617, 0.0008)
+sot23(-0.0070, -0.0640, five=True)
+label('U7', -0.0070, -0.0613, 0.0008)
+bodies.block(U(-0.0130), -0.0650, 0.0040, 0.0040, BOARD_BACK, BOARD_BACK + 0.0020)
+for side in (-1, 1):
+    metal.block(U(-0.0130) + side * 0.0017, -0.0650, 0.0009, 0.0030, BOARD_BACK, BOARD_BACK + 0.0006)
+label('4R7', -0.0130, -0.0650, 0.0012, y=BOARD_BACK + 0.0020 + 0.00004)
+keep(U(-0.0130), -0.0650, 0.0050, 0.0050)
+label('L1', -0.0130, -0.0617, 0.0008)
+chip_resistor(-0.0175, -0.0600, True, (0.0020, 0.0012), cap=True, tag=None)
+chip_resistor(-0.0095, -0.0600, True, (0.0020, 0.0012), cap=True, tag=None)
+chip_resistor(0.0125, -0.0615, False, (0.0010, 0.0005), cap=True)
+chip_resistor(0.0125, -0.0660, False, (0.0010, 0.0005))
+label('USB-C 5V', -0.0080, -0.0700, 0.00085)
+
+# vertical jst battery header next to the battery's tab end, the plug lives with the battery
+bt_u, bt_v = 0.0190, -0.0640
+jst.block(U(bt_u), bt_v, 0.0060, 0.0045, BOARD_BACK, BOARD_BACK + 0.0060)
+dark.block(U(bt_u), bt_v, 0.0046, 0.0030, BOARD_BACK + 0.0060, BOARD_BACK + 0.00605)
+for side in (-1, 1):
+    metal.block(U(bt_u) + side * 0.0036, bt_v + 0.0010, 0.0012, 0.0016, BOARD_BACK, BOARD_BACK + 0.0006)
+    gold.rect(U(bt_u) + side * 0.0036, bt_v + 0.0010, 0.0016, 0.0022, Y_PAD)
+keep(U(bt_u), bt_v, 0.0090, 0.0060)
+label('+', bt_u + 0.0010, bt_v - 0.0036, 0.0012)
+label('-', bt_u - 0.0010, bt_v - 0.0036, 0.0012)
+label('BT1', bt_u + 0.0060, bt_v, 0.0009)
+
 # fiducials for the pick and place
-for u, v in ((-0.0345, 0.0380), (0.0335, -0.0480), (-0.0060, -0.0600)):
+for u, v in ((-0.0345, 0.0380), (0.0360, -0.0520), (-0.0215, -0.0600)):
     gold.disc(U(u), v, 0.0005, Y_PAD, 16)
     keep(U(u), v, 0.0026, 0.0026, 0.0)
 
 # the routed nets first so the filler stays out of their way
 can_bottom = can_v - can_h / 2 - 0.0002
-bus([(j3_u, j3_v + 0.0030), (j3_u, -0.0110), (-0.0262, -0.0015), (-0.0262, 0.0356), (-0.0226, can_bottom)], 4)
-bus([(0.0140, -0.0190 + 0.0036), (0.0140, -0.0100), (0.0255, 0.0015), (0.0255, 0.0335), (0.0222, 0.0368), (-0.0090, 0.0368), (-0.0090, can_bottom)], 4)
-for (name, net), (u, v) in zip(tps, tp_spots):
-    if net in ('SWDIO', 'SWCLK'):
-        track(route((u + 0.0011, v), (j3_u - 0.0025 + (0.00254 if net == 'SWCLK' else 0.0), j3_v - 0.0027)))
-    else:
-        track([(u + 0.0011, v), (u + 0.0050, v)], 0.0005 if net in ('VBAT', 'GND') else 0.0003)
-        via(U(u + 0.0054), v)
-track(route((0.0200, mouth + 0.0060), (0.0165, -0.0405 - 0.0025)), 0.0007)
-track(route((0.0165 - 0.0020, -0.0405), (0.0035 + 0.0015, -0.0470)), 0.0006)
-track(route((0.0, -BH / 2 + 0.0090), (0.0035, -0.0470 - 0.0019)), 0.0007)
-via(U(0.0), -BH / 2 + 0.0092)
+# swd from the header up the left side into the ble module
+bus([(j3_u, j3_v + 0.0028), (j3_u, 0.0306), (-0.0226, can_bottom)], 4)
+# sd card lines up the right side, they dive through vias to the mcu on the front
+bus([(0.0310, sd_v1 + 0.0004), (0.0310, 0.0010), (0.0255, 0.0065), (0.0255, 0.0300)], 6, end_vias=True)
+# battery to charger, charger to the buck, buck to the inductor, usb into the charger
+track(route((bt_u - 0.0030, bt_v), (0.0080 + 0.0021, -0.0645)), 0.0007)
+track(route((0.0080 - 0.0021, -0.0645), (-0.0070 + 0.0016, -0.0640)), 0.0006)
+track([(-0.0070 - 0.0016, -0.0640), (-0.0130 + 0.0022, -0.0650)], 0.0007)
+track(route((0.0, -BH / 2 + 0.0042), (0.0080, -0.0645 - 0.0021)), 0.0007)
+via(U(0.0), -BH / 2 + 0.0044)
+
+
+def in_keepout(x, z):
+    return any(x0 < x < x1 and z0 < z < z1 for x0, x1, z0, z1 in keepouts)
+
+
+# stitching vias around the edge like a ground ring, laid after the parts so they go around them
+edge = rounded_outline(BW - 0.0044, BH - 0.0044, BR - 0.0022, 6)
+lengths = [math.dist(edge[i], edge[(i + 1) % len(edge)]) for i in range(len(edge))]
+step, travelled, target = 0.0042, 0.0, 0.0
+for i, length in enumerate(lengths):
+    (x0, z0), (x1, z1) = edge[i], edge[(i + 1) % len(edge)]
+    while target <= travelled + length:
+        t = (target - travelled) / length
+        x, z = x0 + (x1 - x0) * t, z0 + (z1 - z0) * t
+        near_screw = any(math.dist((x, z), screw) < 0.0050 for screw in SCREWS)
+        if not near_screw and not in_keepout(x, z) and not (z < -BH / 2 + 0.006 and abs(x) < 0.0300):
+            via(x, z)
+        target += step
+    travelled += length
 
 # filler tracks wandering between everything else, each one ends in a via
 directions = [(1, 0), (-1, 0), (0, 1), (0, -1), (0.7071, 0.7071), (-0.7071, 0.7071), (0.7071, -0.7071), (-0.7071, -0.7071)]
@@ -1020,6 +1157,107 @@ for face in bm.faces:
 bm.to_mesh(silk_mesh.data)
 bm.free()
 
+
+# ---------- battery ----------
+# a 1600 mah lipo pouch on a foam pad behind the board, label facing the clear back, leads into the jst
+
+bat_y0, bat_y1 = BOARD_BACK + 0.0008, BOARD_BACK + 0.0008 + 0.0055
+bat_x, bat_z = U((BAT['u0'] + BAT['u1']) / 2), (BAT['v0'] + BAT['v1']) / 2
+bat_w, bat_h = BAT['u1'] - BAT['u0'], BAT['v1'] - BAT['v0']
+pouch = prism('sps_battery_pouch', rounded_outline(bat_w, bat_h, 0.0020, 6), bat_y0, bat_y1, pouch_mat, (bat_x, bat_z), bevel=0.0012, bevel_segments=3)
+apply_all(pouch)
+for poly in pouch.data.polygons:
+    if abs(poly.normal.y) > 0.99:
+        poly.use_smooth = False
+label_y = bat_y1
+label_z = bat_z + 0.0011
+sticker = prism('sps_battery_label', rounded_outline(0.0400, 0.0350, 0.0010, 4), label_y - 0.00002, label_y + 0.00012, label_mat, (bat_x, label_z), smooth=False)
+band = prism('sps_battery_band', rounded_outline(0.0400, 0.0075, 0.0010, 4), label_y + 0.00012, label_y + 0.00016, label_band_mat, (bat_x, label_z + 0.0175 - 0.00375), smooth=False)
+# tab end wrapped in kapton, the protection board sits under it
+tape = prism('sps_battery_tape', rounded_outline(0.0430, 0.0034, 0.0006, 3), bat_y0 + 0.0009, bat_y1 - 0.0011, kapton_mat, (bat_x, BAT['v0'] - 0.0016), bevel=0.0004, bevel_segments=2)
+apply_all(tape)
+pcm_end = box('sps_battery_pcm', (0.0026, 0.0010, 0.0026), (U(BAT['u1'] - 0.0012), (bat_y0 + bat_y1) / 2, BAT['v0'] - 0.0016), pcm_mat)
+
+
+def battery_text(body, u, v, size, align='CENTER'):
+    curve = bpy.data.curves.new('battery_text', 'FONT')
+    curve.body = body
+    curve.size = size
+    curve.align_x = align
+    curve.align_y = 'CENTER'
+    curve.resolution_u = 2
+    obj = bpy.data.objects.new('battery_text', curve)
+    scene.collection.objects.link(obj)
+    obj.location = (U(u), label_y + 0.00020, v)
+    obj.rotation_euler = (math.pi / 2, 0, math.pi)
+    return obj
+
+
+white_text = [battery_text('SPS  GEN 1', 0.0, label_z + 0.0175 - 0.00375, 0.0030)]
+ink_text = [
+    battery_text('LI-POLYMER BATTERY', 0.0, label_z + 0.0082, 0.0021),
+    battery_text('3.7V   1600mAh   5.9Wh', 0.0, label_z + 0.0040, 0.0021),
+    battery_text('LP554547', 0.0, label_z - 0.0005, 0.0032),
+    battery_text('SPS-BAT-01   2026', 0.0, label_z - 0.0050, 0.0016),
+    battery_text('DO NOT PUNCTURE, CRUSH OR SHORT', 0.0, label_z - 0.0085, 0.00115),
+    battery_text('+', BAT['u1'] - 0.0035, label_z - 0.0140, 0.0020),
+    battery_text('-', BAT['u1'] - 0.0065, label_z - 0.0140, 0.0020),
+]
+bpy.ops.object.select_all(action='DESELECT')
+for obj in white_text + ink_text:
+    obj.select_set(True)
+bpy.context.view_layer.objects.active = ink_text[0]
+bpy.ops.object.convert(target='MESH')
+for obj in white_text:
+    obj.data.materials.clear()
+    obj.data.materials.append(label_mat)
+for obj in ink_text:
+    obj.data.materials.clear()
+    obj.data.materials.append(label_ink_mat)
+band = join([band] + white_text, 'sps_battery_band')
+ink = join(ink_text, 'sps_battery_ink')
+for obj in (band, ink):
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    for face in bm.faces:
+        face.normal_update()
+        if face.normal.y < -0.5:
+            face.normal_flip()
+    bm.to_mesh(obj.data)
+    bm.free()
+
+# the plug sits in the board's header and the two leads arc over to the tab end
+plug_y0 = BOARD_BACK + 0.0045
+plug = box('sps_battery_plug', (0.0054, 0.0040, 0.0032), (U(bt_u), plug_y0 + 0.0020, bt_v), jst_mat, bevel=0.0002)
+
+
+def lead(name, mat, u):
+    curve = bpy.data.curves.new(name, 'CURVE')
+    curve.dimensions = '3D'
+    curve.bevel_depth = 0.00055
+    curve.bevel_resolution = 2
+    curve.use_fill_caps = True
+    curve.resolution_u = 6
+    spline = curve.splines.new('BEZIER')
+    x = U(u)
+    points = [(x, plug_y0 + 0.0040, bt_v), (x, plug_y0 + 0.0062, bt_v + 0.0040), (x + 0.0004, (bat_y0 + bat_y1) / 2 + 0.0010, BAT['v0'] - 0.0030)]
+    spline.bezier_points.add(len(points) - 1)
+    for point, co in zip(spline.bezier_points, points):
+        point.co = co
+        point.handle_left_type = point.handle_right_type = 'AUTO'
+    obj = bpy.data.objects.new(name, curve)
+    scene.collection.objects.link(obj)
+    curve.materials.append(mat)
+    bpy.ops.object.select_all(action='DESELECT')
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.convert(target='MESH')
+    return obj
+
+
+lead_red = lead('sps_battery_lead_red', wire_red, bt_u + 0.0010)
+lead_black = lead('sps_battery_lead_black', wire_black, bt_u - 0.0010)
+
 # screws come in through the clear back cover into the posts, shanks show through the plastic
 back_screws, back_slots = [], []
 for x, z in SCREWS:
@@ -1040,14 +1278,27 @@ for obj in scene.objects:
     if obj.type == 'MESH':
         apply_all(obj)
 
-# everything soldered to the main board moves together, handy for exploded views
-board_parts = ['sps_pcb', 'sps_traces', 'sps_silk', 'sps_chips', 'sps_parts', 'sps_pins', 'sps_slot', 'sps_usb', 'sps_usb_cavity',
-               'sps_usb_tongue', 'sps_led_white', 'sps_led_red', 'sps_led_green', 'sps_speaker', 'sps_speaker_dots', 'sps_flex_conn']
-board_group = bpy.data.objects.new('sps_board', None)
-scene.collection.objects.link(board_group)
-for obj in scene.objects:
-    if obj.name in board_parts or obj.name.startswith('sps_board_back_'):
-        obj.parent = board_group
+# the six layers of the exploded view, each one an empty so a layer moves as one piece.
+# everything soldered to the main board lives under sps_board, the battery pack under sps_battery
+layers = {
+    'sps_layer_front_shell': ['sps_shell', 'sps_posts', 'sps_screws', 'sps_screw_slots'],
+    'sps_layer_buttons': ['sps_dpad', 'sps_buttons', 'sps_pills', 'sps_pads'],
+    'sps_layer_screen': ['sps_lcd_frame', 'sps_screen', 'sps_standoffs', 'sps_flex'],
+    'sps_board': ['sps_pcb', 'sps_traces', 'sps_silk', 'sps_chips', 'sps_parts', 'sps_pins', 'sps_slot', 'sps_usb', 'sps_usb_cavity',
+                  'sps_usb_tongue', 'sps_led_white', 'sps_led_red', 'sps_led_green', 'sps_speaker', 'sps_speaker_dots', 'sps_flex_conn',
+                  'sps_flex_latch', 'sps_mcu', 'sps_marks', 'sps_switches', 'sps_switch_metal', 'sps_jack'],
+    'sps_battery': ['sps_battery_pouch', 'sps_battery_label', 'sps_battery_band', 'sps_battery_ink', 'sps_battery_tape', 'sps_battery_pcm',
+                    'sps_battery_plug', 'sps_battery_lead_red', 'sps_battery_lead_black'],
+    'sps_layer_back_shell': ['sps_shell_back', 'sps_back_screws', 'sps_back_screw_slots'],
+}
+for group_name, members in layers.items():
+    group = bpy.data.objects.new(group_name, None)
+    scene.collection.objects.link(group)
+    for obj in scene.objects:
+        if obj.name in members or (group_name == 'sps_board' and obj.name.startswith('sps_board_back_')):
+            obj.parent = group
+missing = [name for members in layers.values() for name in members if name not in bpy.data.objects]
+assert not missing, f'layer parts missing: {missing}'
 
 root = bpy.data.objects.new('sps_handheld_concept', None)
 scene.collection.objects.link(root)
