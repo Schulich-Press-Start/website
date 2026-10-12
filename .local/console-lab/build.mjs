@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { build } from 'vite';
 import sharp from 'sharp';
 import { club, site, yearPlan } from '../../src/data/club.ts';
+import { publicClub } from './public-data.mjs';
 
 const root = fileURLToPath(new URL('./', import.meta.url));
 const workspace = fileURLToPath(new URL('../../', import.meta.url));
@@ -61,7 +62,7 @@ try {
         .toFile(join(publicDirectory, `previews/${theme}.webp`));
     }
   }
-  await writeFile(join(publicDirectory, 'club.json'), JSON.stringify({
+  await writeFile(join(publicDirectory, 'club.json'), JSON.stringify(siteMode ? publicClub(club, site, yearPlan) : {
     site: { name: site.name, description: site.description, applicationUrl: site.applicationUrl, publicContact: site.publicContact, instagramUrl: site.instagramUrl, linkedinUrl: site.linkedinUrl, recruitmentStatus: site.recruitmentStatus },
     members: club.members.map(({ id, name, coFounder, linkedin }) => ({ id, name, coFounder, linkedin })),
     memberships: club.memberships,
@@ -180,7 +181,6 @@ function siteHtml(html, path) {
   const canonical = `${productionOrigin}/`;
   const description = escape(site.description);
   const contact = [
-    site.applicationUrl && `<a href="${site.applicationUrl}">Apply to join</a>`,
     site.instagramUrl && `<a href="${site.instagramUrl}">Instagram</a>`,
     site.linkedinUrl && `<a href="${site.linkedinUrl}">LinkedIn</a>`,
     site.publicContact?.email && `<a href="mailto:${site.publicContact.email}">${site.publicContact.email}</a>`,

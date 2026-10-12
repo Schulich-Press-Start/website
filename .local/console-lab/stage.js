@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { CART, CARTRIDGES, MODEL_POSE, SHELF_ROTATION, asideProgress, ejectPose, insertPose, normaliseSource, phase, planAside, shelfPosition, slotPose } from './cartridge-motion.js';
 
 export function groupPlasticSurfaces(geometry) {
   const positions = geometry.getAttribute('position');
@@ -73,15 +74,7 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
   catch (error) { renderer.dispose(); environmentMap.dispose(); throw error; }
   const source = gltf.scene;
   for (const child of [...source.children]) if (child instanceof THREE.Camera) source.remove(child);
-  if (!concept) source.applyMatrix4(new THREE.Matrix4().set(0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1));
-  const bounds = new THREE.Box3().setFromObject(source);
-  const size = bounds.getSize(new THREE.Vector3());
-  source.position.sub(bounds.getCenter(new THREE.Vector3()));
-  const normalised = new THREE.Group();
-  normalised.scale.setScalar(3.4 / size.y);
-  normalised.add(source);
-  const model = new THREE.Group();
-  model.add(normalised);
+  const { model, normalised } = normaliseSource(source, concept);
   scene.add(model);
   const shell = [];
   let screen;
@@ -111,7 +104,7 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
           shell.push(object.material);
         }
       }
-      if (['sps_silk', 'sps_trace'].includes(object.material.name)) {
+      if (['sps_silk', 'sps_trace', 'sps_mark', 'sps_battery_ink'].includes(object.material.name)) {
         // printed and etched layers sit a hair above the board, nudge them so they never flicker
         object.material.polygonOffset = true;
         object.material.polygonOffsetFactor = -1;
@@ -180,6 +173,33 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
   const surfaceMaterials = new Map();
   source.traverse(object => { if (object instanceof THREE.Mesh && object !== screenPanel) surfaceMaterials.set(object, object.material); });
   const wireMaterial = new THREE.MeshBasicMaterial({ color: '#294e5d', wireframe: true, transparent: true, opacity: 0.7, side: THREE.DoubleSide });
+
+  const raycaster = new THREE.Raycaster();
+  // inside the handheld: the model's six layer groups slide apart along its depth, front toward the viewer
+  const layers = mode === 'inside' ? INSIDE_LAYERS.map(layer => ({ ...layer, node: source.getObjectByName(layer.node), meshes: [] })).filter(layer => layer.node) : [];
+  const layerOf = new Map();
+  for (const layer of layers) layer.node.traverse(object => { if (object instanceof THREE.Mesh) { layer.meshes.push(object); layerOf.set(object, layer); } });
+  // every layer that isn't picked turns into a faint ghost so the picked one stands out without losing its place
+  const ghost = new THREE.MeshLambertMaterial({ color: '#d8cdf2', transparent: true, opacity: 0.12, depthWrite: false });
+  let explodeAmount = 0;
+  let highlighted = null;
+  const setExplode = amount => {
+    explodeAmount = amount;
+    for (const layer of layers) layer.node.position.z = layer.offset * amount;
+  };
+  const setHighlight = id => {
+    highlighted = layers.some(layer => layer.id === id) ? id : null;
+    for (const layer of layers) for (const mesh of layer.meshes) mesh.material = !highlighted || layer.id === highlighted ? surfaceMaterials.get(mesh) ?? mesh.material : ghost;
+    canvas.dataset.highlight = highlighted ?? '';
+  };
+  const layerUnder = event => {
+    if (!layers.length) return null;
+    const box = canvas.getBoundingClientRect();
+    raycaster.setFromCamera(new THREE.Vector2((event.clientX - box.left) / box.width * 2 - 1, -(event.clientY - box.top) / box.height * 2 + 1), camera);
+    // ghosts still count, so you can point at a faded layer to bring it back
+    const hit = raycaster.intersectObjects(layers.flatMap(layer => layer.meshes), false)[0];
+    return hit ? layerOf.get(hit.object).id : null;
+  };
   function display(title = 'PRESS START', progress = 0) {
     if (concept) { paintLcd(screenContext, title, progress); screenTexture.needsUpdate = true; return; }
     screenContext.fillStyle = '#171f22'; screenContext.fillRect(0, 0, 512, 400);
@@ -189,7 +209,7 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
     screenContext.fillStyle = '#badfca'; screenContext.font = '18px sans-serif'; screenContext.fillText('SCHULICH', 256, 87);
     screenContext.fillStyle = '#f6f4ed'; screenContext.font = 'bold 35px sans-serif'; screenContext.fillText(title.toUpperCase(), 256, 192, 440);
     screenContext.fillStyle = '#e8ae74'; screenContext.fillRect(145, 257, 222, 5);
-    screenContext.font = '16px sans-serif'; screenContext.fillText('MADE TO PLAY', 256, 318);
+    screenContext.font = '16px sans-serif'; screenContext.fillText('MADE BY STUDENTS', 256, 318);
     screenTexture.needsUpdate = true;
   }
   display();
@@ -273,16 +293,10 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
       const grid = new THREE.GridHelper(5.8, 29, '#9595a0', '#b8b8c1'); grid.position.set(0.4, -0.199, 0.25); grid.scale.z = 0.8; scene.add(grid);
     }
     canvas.dataset.workbench = horizonGrid ? 'horizon-grid' : 'mat';
-    model.rotation.set(-Math.PI / 2, 0, -0.22);
-    model.position.set(0.9, 0.22, 0.65);
-    const cartridgeData = [
-      { id: 'handheld', title: 'THE BUILD', sub: 'SPS / HARDWARE', colour: '#784ac3', x: -2.4, z: -1.9 },
-      { id: 'crew', title: 'THE TEAMS', sub: 'SPS / TEAMS', colour: '#578b7a', x: -0.6, z: -2.6 },
-      { id: 'arcade', title: 'BRICK BREAK', sub: 'BROWSER DEMO', colour: '#d95340', x: 1.2, z: -2.9 },
-      { id: 'join', title: 'YOUR TURN', sub: 'SPS / JOIN', colour: '#e0ad37', x: 3.1, z: -2.6 },
-    ];
+    model.rotation.copy(MODEL_POSE.rotation);
+    model.position.copy(MODEL_POSE.position);
     const parts = cartridgeParts();
-    for (const item of cartridgeData) {
+    for (const item of CARTRIDGES) {
       const group = new THREE.Group();
       for (const [geometry, material] of parts) {
         const mesh = new THREE.Mesh(geometry, material);
@@ -291,7 +305,7 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
       const texture = new THREE.CanvasTexture(cartridgeLabel(item)); texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = maxAnisotropy;
       const face = new THREE.Mesh(new THREE.PlaneGeometry(1.08, 1.1), new THREE.MeshStandardMaterial({ map: texture, roughness: 0.55 }));
       face.rotation.x = -Math.PI / 2; face.position.set(-0.02, CART.top + 0.004, -0.06); face.receiveShadow = true; group.add(face);
-      group.position.set(item.x, 0.08, item.z); group.rotation.y = -0.14;
+      group.position.copy(shelfPosition(item)); group.quaternion.copy(SHELF_ROTATION);
       group.userData = { ...item, base: group.position.clone() };
       group.traverse(mesh => { mesh.userData.program = item.id; });
       cartridges.push(group); board.add(group);
@@ -312,7 +326,11 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
   let pocketFocused = false;
   const cameraTarget = new THREE.Vector3();
   const reduced = () => document.body.dataset.motion === 'false' || matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const render = () => { if (!disposed && !document.hidden) renderer.render(scene, camera); };
+  const render = () => {
+    if (disposed || document.hidden) return;
+    renderer.render(scene, camera);
+    if (mode === 'inside') options.onFrame?.();
+  };
   const stop = () => {
     cancelAnimationFrame(frame);
     frame = 0;
@@ -326,7 +344,7 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
     insertedCartridge = undefined;
     cartridges.forEach(group => {
       group.position.copy(group.userData.base);
-      group.rotation.set(0, -0.14, 0);
+      group.quaternion.copy(SHELF_ROTATION);
       group.scale.setScalar(1);
     });
     if (mode === 'cartridge') { setCartridgeState('idle'); display(); }
@@ -367,15 +385,13 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
       frame = requestAnimationFrame(step);
     });
   }
-  const phase = (progress, from, to) => {
-    const value = THREE.MathUtils.clamp((progress - from) / (to - from), 0, 1);
-    return value * value * (3 - 2 * value);
-  };
-  const cartridgePose = () => ({
-    aligned: model.localToWorld(new THREE.Vector3(slot.x, slot.y + 0.9, slot.z)),
-    // the slot sits behind the board, so leave a good chunk of cart sticking out like a real game boy
-    seated: model.localToWorld(new THREE.Vector3(slot.x, slot.y + (concept ? 0.32 : -0.45), slot.z)),
-    rotation: model.getWorldQuaternion(new THREE.Quaternion()).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2)),
+  const cartridgePose = () => slotPose(model, slot, concept);
+  // which neighbours have to step back for each cartridge, worked out once from the real insert and eject sweeps
+  let asidePlan;
+  const asideFor = id => (asidePlan ??= planAside(CARTRIDGES, cartridgePose())).get(id) ?? new Map();
+  const moveNeighbours = (id, amount) => asideFor(id).forEach((offset, other) => {
+    const neighbour = cartridges.find(item => item.userData.id === other);
+    neighbour.position.copy(neighbour.userData.base).addScaledVector(offset, amount);
   });
   async function insertCartridge(id) {
     const group = cartridges.find(item => item.userData.id === id);
@@ -383,9 +399,9 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
     restoreCartridges();
     const operation = cartridgeOperation;
     const start = group.position.clone();
-    const lift = start.clone().add(new THREE.Vector3(0, 1.5, 0));
     const rotation = group.quaternion.clone();
     const pose = cartridgePose();
+    const state = { position: group.position, quaternion: group.quaternion, scale: 1 };
     setCartridgeState('lifting');
     display('LOADING');
     let shown = 0;
@@ -393,20 +409,10 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
       // the loading bar only repaints when it moves a whole step
       const step = Math.floor(phase(progress, 0.3, 0.92) * 12) / 12;
       if (concept && step !== shown) { shown = step; display('LOADING', step); }
-      const liftProgress = phase(progress, 0, 0.24);
-      const alignProgress = phase(progress, 0.24, 0.6);
-      const insertProgress = phase(progress, 0.6, 0.92);
-      if (progress < 0.24) group.position.lerpVectors(start, lift, liftProgress);
-      else if (progress < 0.6) {
-        setCartridgeState('aligning');
-        group.position.lerpVectors(lift, pose.aligned, alignProgress);
-        group.position.y += Math.sin(alignProgress * Math.PI) * 0.45;
-      } else {
-        setCartridgeState(progress < 0.92 ? 'inserting' : 'seated');
-        group.position.lerpVectors(pose.aligned, pose.seated, insertProgress);
-      }
-      group.quaternion.slerpQuaternions(rotation, pose.rotation, phase(progress, 0.12, 0.6));
-      group.scale.setScalar(THREE.MathUtils.lerp(1, 0.78, phase(progress, 0, 0.6)));
+      setCartridgeState(progress < 0.24 ? 'lifting' : progress < 0.6 ? 'aligning' : progress < 0.92 ? 'inserting' : 'seated');
+      insertPose(progress, start, rotation, pose, state);
+      group.scale.setScalar(state.scale);
+      moveNeighbours(id, asideProgress.insert(progress));
     }, 2200, progress => progress);
     if (operation !== cartridgeOperation || disposed) return false;
     if (!completed) { restoreCartridges(); return false; }
@@ -423,19 +429,13 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
     const pose = cartridgePose();
     const start = group.position.clone();
     const rotation = group.quaternion.clone();
-    const shelfRotation = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -0.14, 0));
-    const target = group.userData.base.clone();
+    const home = group.userData.base.clone();
+    const state = { position: group.position, quaternion: group.quaternion, scale: 1 };
     setCartridgeState('ejecting');
     const completed = await move(progress => {
-      const exitProgress = phase(progress, 0, 0.32);
-      const returnProgress = phase(progress, 0.32, 1);
-      if (progress < 0.32) group.position.lerpVectors(start, pose.aligned, exitProgress);
-      else {
-        group.position.lerpVectors(pose.aligned, target, returnProgress);
-        group.position.y += Math.sin(returnProgress * Math.PI) * 1.4;
-      }
-      group.quaternion.slerpQuaternions(rotation, shelfRotation, returnProgress);
-      group.scale.setScalar(THREE.MathUtils.lerp(0.78, 1, returnProgress));
+      ejectPose(progress, start, rotation, pose, home, state);
+      group.scale.setScalar(state.scale);
+      moveNeighbours(group.userData.id, asideProgress.eject(progress));
     }, 1400, progress => progress);
     if (operation !== cartridgeOperation || disposed) return false;
     restoreCartridges();
@@ -475,6 +475,13 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
       camera.position.copy(pose.position);
       cameraTarget.copy(pose.target);
       camera.lookAt(cameraTarget);
+    } else if (mode === 'inside') {
+      // three quarter side view so the stack reads, pulled back far enough that the exploded layers fit any width
+      camera.position.set(0, 0.9, Math.max(8.2, 5.2 / (Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * 2 * camera.aspect)));
+      camera.lookAt(0, 0.05, 0);
+      // the layers spread further toward the front than the back, nudge right so the stack sits in the middle
+      model.position.set(0.25, 0.05, 0);
+      model.rotation.set(0.18, -1.02, 0.03);
     } else {
       const compact = mode === 'inspector' || box.width < 1000;
       camera.position.set(0, 0.6, compact ? 8.9 : 11.2);
@@ -487,9 +494,15 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
   }
   const observer = new ResizeObserver(resize); observer.observe(canvas);
   if (horizonGrid && options.frame) observer.observe(options.frame);
-  const raycaster = new THREE.Raycaster();
   function pointerDown(event) { dragStart = { x: event.clientX, y: event.clientY }; lastRotation = model.rotation.y; }
+  let hoverFrame = 0;
+  let hoverEvent;
   function pointerMove(event) {
+    if (mode === 'inside' && !dragStart && event.pointerType !== 'touch') {
+      // one raycast per frame at most, pointer moves come in faster than that
+      hoverEvent = event;
+      hoverFrame ||= requestAnimationFrame(() => { hoverFrame = 0; options.onHover?.(layerUnder(hoverEvent)); });
+    }
     if (!dragStart || mode === 'cartridge' || mode === 'pocket') return;
     stop(); model.rotation.y = lastRotation + (event.clientX - dragStart.x) * 0.009; render();
   }
@@ -500,6 +513,7 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
       const hit = raycaster.intersectObjects(cartridges, true)[0];
       if (hit) options.onSelect?.(hit.object.userData.program);
     }
+    if (mode === 'inside' && dragStart && event.target === canvas && Math.hypot(event.clientX - dragStart.x, event.clientY - dragStart.y) < 8) options.onPick?.(layerUnder(event));
     if (mode === 'pocket' && dragStart && Math.hypot(event.clientX - dragStart.x, event.clientY - dragStart.y) < 8) {
       const box = canvas.getBoundingClientRect();
       raycaster.setFromCamera(new THREE.Vector2((event.clientX - box.left) / box.width * 2 - 1, -(event.clientY - box.top) / box.height * 2 + 1), camera);
@@ -517,6 +531,8 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
     if (mode !== 'cartridge' && ['ArrowLeft', 'ArrowRight'].includes(event.key)) { event.preventDefault(); model.rotation.y += event.key === 'ArrowLeft' ? -.3 : .3; render(); }
   }
   function visibility() { if (document.hidden) { if (mode === 'cartridge' && !['idle', 'inserted'].includes(canvas.dataset.cartridgeState)) restoreCartridges(); else stop(); } else render(); }
+  const pointerLeave = () => { if (mode === 'inside') options.onHover?.(null); };
+  canvas.addEventListener('pointerleave', pointerLeave);
   canvas.addEventListener('pointerdown', pointerDown);
   canvas.addEventListener('pointermove', pointerMove);
   window.addEventListener('pointerup', pointerUp);
@@ -552,6 +568,21 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
     reset() { pocketFocused = false; restoreCartridges(); resize(); },
     insert: insertCartridge,
     eject: ejectCartridge,
+    explode(open) {
+      canvas.dataset.exploded = String(Boolean(open));
+      const from = explodeAmount, to = open ? 1 : 0;
+      return move(progress => setExplode(from + (to - from) * progress), 900, progress => progress < 0.5 ? 4 * progress ** 3 : 1 - (-2 * progress + 2) ** 3 / 2);
+    },
+    highlight(id) { if (id !== highlighted) { setHighlight(id); render(); } },
+    // where a layer's tag should sit on screen, the top of its bounds in css pixels from the canvas corner
+    anchor(id) {
+      const layer = layers.find(item => item.id === id);
+      if (!layer) return null;
+      const bounds = new THREE.Box3().setFromObject(layer.node);
+      const point = new THREE.Vector3((bounds.min.x + bounds.max.x) / 2, bounds.max.y, (bounds.min.z + bounds.max.z) / 2).project(camera);
+      const box = canvas.getBoundingClientRect();
+      return { x: (point.x + 1) / 2 * box.width, y: (1 - point.y) / 2 * box.height };
+    },
     intro() { const from = model.rotation.y; move(progress => { model.rotation.y = from + (1 - progress) * 0.7; }, 1500); },
     label(title) { display(title); render(); },
     select(id) {
@@ -564,12 +595,13 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
           group.position.lerpVectors(positions[index], target, progress);
         });
       }, 520);
-      display(id === 'handheld' ? 'THE BUILD' : id === 'crew' ? 'THE TEAMS' : id === 'join' ? 'YOUR TURN' : 'BRICK BREAK');
+      display(CARTRIDGES.find(item => item.id === id)?.title ?? 'PRESS START');
       render();
     },
     dispose() {
       restoreCartridges(); disposed = true; observer.disconnect();
-      canvas.removeEventListener('pointerdown', pointerDown); canvas.removeEventListener('pointermove', pointerMove);
+      canvas.removeEventListener('pointerdown', pointerDown); canvas.removeEventListener('pointermove', pointerMove); canvas.removeEventListener('pointerleave', pointerLeave);
+      cancelAnimationFrame(hoverFrame); ghost.dispose();
       window.removeEventListener('pointerup', pointerUp); canvas.removeEventListener('keydown', keyboard);
       document.removeEventListener('visibilitychange', visibility); window.removeEventListener('lab-preferences', onPreferences);
       const materials = new Set();
@@ -580,6 +612,16 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
     },
   };
 }
+// the exploded view's layers: the empty each one lives under in the concept glb and how far it slides, in metres
+const INSIDE_LAYERS = [
+  { id: 'front', node: 'sps_layer_front_shell', offset: 0.080 },
+  { id: 'buttons', node: 'sps_layer_buttons', offset: 0.055 },
+  { id: 'screen', node: 'sps_layer_screen', offset: 0.029 },
+  { id: 'board', node: 'sps_board', offset: 0 },
+  { id: 'battery', node: 'sps_battery', offset: -0.028 },
+  { id: 'back', node: 'sps_layer_back_shell', offset: -0.056 },
+];
+
 // dot matrix lcd for the concept model: 160 x 120 logical pixels drawn as cells with a dark gap.
 // 8 px cells make a 1280 x 960 texture, sharp at 2x even when the handheld fills the viewer
 const LCD = { width: 160, height: 120, cell: 8 };
@@ -633,7 +675,7 @@ function paintLcd(context, title, progress) {
     const scale = textWidth(words, 2) <= width - 12 ? 2 : 1;
     write(words, scale === 2 ? 50 : 56, scale);
     rect(56, 80, 104, 81);
-    write('MADE TO PLAY', 92, 1);
+    write('MADE BY STUDENTS', 92, 1);
   }
   // keep the gap a quarter of a cell whatever the cell size
   const unit = cell - Math.max(1, Math.round(cell / 4));
@@ -646,7 +688,6 @@ function paintLcd(context, title, progress) {
 }
 
 // game boy style cartridge: notched top corner, grip ridges, recessed label, embossed arrow, gold contact window
-const CART = { width: 1.4, length: 1.85, thickness: 0.27, top: 0.135 };
 function cartridgeParts() {
   const { width, length, thickness } = CART;
   const halfWidth = width / 2, halfLength = length / 2, radius = 0.07, notch = 0.22, bevel = 0.028;

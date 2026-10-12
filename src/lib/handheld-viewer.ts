@@ -168,7 +168,7 @@ export async function mountHandheld(container: HTMLElement, options: ViewerOptio
     displayContext.strokeStyle = '#f7a056';
     displayContext.strokeRect(144, 337, 480, 10);
     displayContext.font = '22px sans-serif';
-    displayContext.fillText(progress < 1 ? 'STARTING SOMETHING GOOD' : 'MADE TO PLAY. MADE BY US.', 384, 410);
+    displayContext.fillText(progress < 1 ? 'STARTING SOMETHING GOOD' : 'MADE BY STUDENTS.', 384, 410);
     displayTexture.needsUpdate = true;
     if (displayPanel) displayPanel.visible = powered && conceptEnabled && !inspecting;
   };

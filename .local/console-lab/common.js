@@ -1,7 +1,7 @@
-import { createElement, Power, Volume2, VolumeX, Settings2, ArrowLeft, ArrowRight, ArrowUpRight, X, Users, Gamepad2, CircuitBoard, Box, BookOpen, Send, Maximize, RotateCcw, Play, Pause, Grid2X2, Check, Mail, SlidersHorizontal, Monitor, ChevronRight, Pipette, Sparkles, Plus } from 'lucide';
+import { createElement, Power, Volume2, VolumeX, Settings2, ArrowLeft, ArrowRight, ArrowUpRight, X, Users, Gamepad2, CircuitBoard, Box, BookOpen, Send, Maximize, RotateCcw, Play, Pause, Grid2X2, Check, Mail, SlidersHorizontal, Monitor, ChevronRight, Pipette, Sparkles, Plus, Layers } from 'lucide';
 import { createSoundscape } from './audio.js';
 
-const glyphs = { Power, Volume2, VolumeX, Settings2, ArrowLeft, ArrowRight, ArrowUpRight, X, Users, Gamepad2, CircuitBoard, Box, BookOpen, Send, Maximize, RotateCcw, Play, Pause, Grid2X2, Check, Mail, SlidersHorizontal, Monitor, ChevronRight, Pipette, Sparkles, Plus };
+const glyphs = { Power, Volume2, VolumeX, Settings2, ArrowLeft, ArrowRight, ArrowUpRight, X, Users, Gamepad2, CircuitBoard, Box, BookOpen, Send, Maximize, RotateCcw, Play, Pause, Grid2X2, Check, Mail, SlidersHorizontal, Monitor, ChevronRight, Pipette, Sparkles, Plus, Layers };
 export const media = '/media/';
 export const siteMode = import.meta.env.VITE_SPS_SITE === 'true';
 export const currentSite = import.meta.env.VITE_SPS_CLASSIC_URL ?? 'http://127.0.0.1:4322';
@@ -9,14 +9,17 @@ export const data = await fetch('/club.json').then(response => {
   if (!response.ok) throw new Error('Club data is unavailable.');
   return response.json();
 });
+const countWords = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+export const countWord = count => countWords[count] ?? String(count);
 export const concepts = [{ id: 'signal', title: 'Signal' }, { id: 'playroom', title: 'Playroom' }, { id: 'cartridge', title: 'Cartridge Club' }, { id: 'pocket', title: 'Pocket OS' }];
 export const programs = [
   { id: 'handheld', title: 'The handheld', short: 'Hardware', icon: 'Gamepad2', colour: '#784ac3', description: 'Explore the handheld we are building.' },
   { id: 'crew', title: 'The team', short: 'Crew', icon: 'Users', colour: '#d99d73', description: 'Meet the SPS team.' },
-  { id: 'work', title: 'Our divisions', short: 'Divisions', icon: 'CircuitBoard', colour: '#5a9f8a', description: 'Six divisions working on one handheld.' },
+  { id: 'work', title: 'Our divisions', short: 'Divisions', icon: 'CircuitBoard', colour: '#5a9f8a', description: `${countWord(data.divisions.length)} divisions working on one handheld.` },
   { id: 'arcade', title: 'Brick Break', short: 'Arcade', icon: 'Sparkles', colour: '#d66875', description: 'Take a break with a quick game.' },
   { id: 'journal', title: 'Project updates', short: 'Journal', icon: 'BookOpen', colour: '#5886a8', description: 'See what we are working on next.' },
-  { id: 'join', title: 'Join the team', short: 'Join', icon: 'Send', colour: '#efb844', description: 'Find your place on the team.' },
+  // the public website isn't recruiting, so the join program only exists in the prototype comparison builds
+  ...(siteMode ? [] : [{ id: 'join', title: 'Join the team', short: 'Join', icon: 'Send', colour: '#efb844', description: 'Find your place on the team.' }]),
 ];
 
 export function icon(name, size = 20) {
@@ -249,13 +252,13 @@ function openTeams() {
   const rack = data.divisions.map((division, index) => {
     const look = teamLooks[division.id] ?? { colour: '#784ac3', ink: '#ffffff', code: `SPS-0${index + 1}`, icon: 'Box' };
     const lead = teamLead(division.id);
-    return `<button type="button" class="team-cart" data-team="${index}" aria-pressed="${index === 0}" style="--cart:${look.colour};--cart-ink:${look.ink}"><span class="team-cart-body">${cartridgeGrip}<span class="team-cart-label"><span class="team-cart-band" aria-hidden="true">${icon(look.icon, 16)}<span>${look.code}</span></span><strong>${escapeHtml(division.name)}</strong><span class="team-cart-meta">${lead ? `Lead: ${escapeHtml(lead.name.split(' ')[0])}` : 'Recruiting'}</span></span>${cartridgeMark}<span class="team-cart-pins" aria-hidden="true"></span></span></button>`;
+    return `<button type="button" class="team-cart" data-team="${index}" aria-pressed="${index === 0}" style="--cart:${look.colour};--cart-ink:${look.ink}"><span class="team-cart-body">${cartridgeGrip}<span class="team-cart-label"><span class="team-cart-band" aria-hidden="true">${icon(look.icon, 16)}<span>${look.code}</span></span><strong>${escapeHtml(division.name)}</strong><span class="team-cart-meta">${lead ? `Lead: ${escapeHtml(lead.name.split(' ')[0])}` : siteMode ? '' : 'Recruiting'}</span></span>${cartridgeMark}<span class="team-cart-pins" aria-hidden="true"></span></span></button>`;
   }).join('');
   const handheld = `<div class="team-console" aria-hidden="true"><span class="team-console-cart"><span></span></span><img src="/media/handheld-concept-front.webp" alt="" width="300" height="440" /><span class="team-console-screen"><span data-console-code></span><strong data-console-name></strong></span></div>`;
   const plan = (data.yearPlan ?? []).map(item => `<li><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.detail)}</span></li>`).join('');
   const dialog = showPanel('Meet the teams.', 'SPS / Teams', `
-    <p class="teams-intro">Six teams, one handheld. Pick a cartridge to see what each team works on.</p>
-    <div class="team-rack" role="group" aria-label="Teams">${rack}</div>
+    <p class="teams-intro">${countWord(data.divisions.length)} teams, one handheld. Pick a cartridge to see what each team works on.</p>
+    <div class="team-rack" role="group" aria-label="Teams" style="--rack-columns:${data.divisions.length};--rack-columns-tablet:${data.divisions.length <= 4 ? data.divisions.length : 3}">${rack}</div>
     <section class="team-detail" aria-label="Selected team">${handheld}<div class="team-detail-body" aria-live="polite"></div></section>
     <div class="team-footer">
       ${president ? `<div class="team-president"><img src="/media/${president.id}.png" alt="" width="64" height="64" /><div><span>President${president.coFounder ? ' / Co-Founder' : ''}</span><strong>${escapeHtml(president.name)}</strong></div><a class="icon-button" href="${president.linkedin}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(president.name)} on LinkedIn" title="LinkedIn">${icon('ArrowUpRight', 18)}</a></div>` : ''}
@@ -279,7 +282,7 @@ function openTeams() {
     detailBody.innerHTML = `<div class="team-detail-copy"><span>${look.code} / Team</span><h3>${escapeHtml(division.name)}</h3><p>${escapeHtml(division.description)}</p><h4>What we work on</h4><ul>${division.work.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>
       <div class="team-lead">${lead
         ? `<img src="/media/${lead.id}.png" alt="" width="96" height="96" /><span>Team lead${lead.coFounder ? ' / Co-Founder' : ''}</span><strong>${escapeHtml(lead.name)}</strong><a class="command" href="${lead.linkedin}" target="_blank" rel="noopener noreferrer">LinkedIn ${icon('ArrowUpRight', 18)}</a>`
-        : `<span class="program-status">Recruiting now</span><strong>Lead to be announced</strong><p>We are looking for ${escapeHtml(division.name)} members this year.</p>${data.site.applicationUrl ? `<a class="command primary" href="${data.site.applicationUrl}" target="_blank" rel="noopener noreferrer">Apply to SPS ${icon('ArrowUpRight', 18)}</a>` : ''}`}</div>`;
+        : siteMode ? '' : `<span class="program-status">Recruiting now</span><strong>Lead to be announced</strong><p>We are looking for ${escapeHtml(division.name)} members this year.</p>${data.site.applicationUrl ? `<a class="command primary" href="${data.site.applicationUrl}" target="_blank" rel="noopener noreferrer">Apply to SPS ${icon('ArrowUpRight', 18)}</a>` : ''}`}</div>`;
     if (fromUser && innerWidth <= 900) detail.scrollIntoView({ block: 'nearest', behavior: preferences.motion ? 'smooth' : 'instant' });
   };
   const rackElement = dialog.querySelector('.team-rack');
@@ -299,8 +302,98 @@ function openTeams() {
   select(0);
 }
 
+// inside the handheld: what each layer is and which team builds it, the ownership comes from the kickoff slide
+const insideLayers = [
+  { id: 'front', name: 'Front shell', teams: ['mechanical'], detail: 'Smoky acrylic front with the screen window, the button holes and the screw posts.' },
+  { id: 'buttons', name: 'Buttons', teams: ['mechanical'], detail: 'D-pad, ABXY, start and select, and every cap presses its own tactile switch.' },
+  { id: 'screen', name: 'Screen', teams: ['embedded-hardware', 'embedded-software', 'game-design'], detail: 'The display module, with a flex cable that clips into a connector on the board.' },
+  { id: 'board', name: 'Circuit board', teams: ['embedded-hardware', 'embedded-software', 'game-design'], detail: 'An STM32H743 at the centre, with audio, a headphone jack, microSD and Bluetooth around it.' },
+  { id: 'battery', name: 'Battery', teams: ['embedded-hardware'], detail: 'A 1600 mAh LiPo pouch with its own protection circuit, plugged into the board.' },
+  { id: 'back', name: 'Back shell', teams: ['mechanical'], detail: 'A clear back cover that screws into the posts and keeps everything sealed in.' },
+];
+const teamShort = { 'embedded-hardware': 'Hardware', 'embedded-software': 'Software', 'game-design': 'Game Design', mechanical: 'Mechanical' };
+const teamChips = teams => `<span class="team-chips">${teams.map(id => `<span class="team-chip" style="--chip:${teamLooks[id].colour}">${teamShort[id]}</span>`).join('')}</span>`;
+
+async function openInside() {
+  const prompt = 'Pick a layer to see what it does and which team builds it.';
+  const dialog = showPanel('Inside the handheld.', 'SPS / Inside', `
+    <div class="inside-layout">
+      <div class="inside-scene"><canvas aria-label="Exploded view of the SPS handheld. Drag to turn it, or pick a layer from the list." tabindex="0"></canvas><img class="model-fallback" src="/media/handheld-concept.webp" alt="SPS handheld concept render" /><div class="inside-tag" aria-hidden="true" hidden></div></div>
+      <div class="inside-side">
+        <button type="button" class="command inside-explode" data-action="inside-explode" aria-pressed="true">${icon('Layers', 18)}<span>Exploded view</span></button>
+        <ol class="inside-layers" aria-label="Layers, front to back">${insideLayers.map((layer, index) => `<li><button type="button" data-layer="${layer.id}" aria-pressed="false" aria-describedby="inside-detail"><span class="inside-layer-index" aria-hidden="true">0${index + 1}</span><span class="inside-layer-name">${layer.name}</span>${teamChips(layer.teams)}</button></li>`).join('')}</ol>
+        <p class="inside-detail" id="inside-detail" aria-live="polite">${prompt}</p>
+      </div>
+    </div>`, 'inside-panel');
+  const scene = dialog.querySelector('.inside-scene');
+  const detail = dialog.querySelector('.inside-detail');
+  const tag = dialog.querySelector('.inside-tag');
+  const toggle = dialog.querySelector('[data-action="inside-explode"]');
+  const buttons = [...dialog.querySelectorAll('[data-layer]')];
+  let stage;
+  let picked = null;
+  let shown = null;
+  const placeTag = () => {
+    const layer = insideLayers.find(item => item.id === shown);
+    const anchor = layer && stage?.anchor(layer.id);
+    tag.hidden = !anchor;
+    if (!anchor) return;
+    if (tag.dataset.shows !== layer.id) { tag.innerHTML = `<strong>${layer.name}</strong>${teamChips(layer.teams)}`; tag.dataset.shows = layer.id; }
+    // keep the tag inside the scene even when the layer sits near an edge
+    const half = tag.offsetWidth / 2 + 8;
+    tag.style.left = `${Math.min(Math.max(anchor.x, half), scene.clientWidth - half)}px`;
+    tag.style.top = `${Math.max(anchor.y, tag.offsetHeight + 14)}px`;
+  };
+  const show = id => {
+    shown = id ?? picked;
+    const layer = insideLayers.find(item => item.id === shown);
+    detail.textContent = layer ? `${layer.name}. ${layer.detail}` : prompt;
+    stage?.highlight(shown);
+    placeTag();
+  };
+  const pick = id => {
+    picked = picked === id ? null : id;
+    buttons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.layer === picked)));
+    show(picked);
+    tone();
+  };
+  buttons.forEach(button => {
+    button.addEventListener('click', () => pick(button.dataset.layer));
+    button.addEventListener('pointerenter', () => show(button.dataset.layer));
+    button.addEventListener('pointerleave', () => show(null));
+    button.addEventListener('focus', () => show(button.dataset.layer));
+    button.addEventListener('blur', () => show(null));
+  });
+  dialog.querySelector('.inside-layers').addEventListener('keydown', event => {
+    if (!['ArrowUp', 'ArrowDown'].includes(event.key) || !event.target.matches('[data-layer]')) return;
+    buttons[(buttons.indexOf(event.target) + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length].focus();
+    event.preventDefault();
+  });
+  try {
+    const { createModelStage } = await import('./stage.js');
+    if (!dialog.open || !dialog.classList.contains('inside-panel')) return;
+    stage = await createModelStage(dialog.querySelector('canvas'), 'inside', { model: 'concept', onHover: id => show(id), onPick: id => { if (id) pick(id); }, onFrame: placeTag });
+    if (!dialog.open || !dialog.classList.contains('inside-panel')) { stage.dispose(); return; }
+    dialog.querySelector('.model-fallback').hidden = true;
+    toggle.addEventListener('click', () => {
+      const open = toggle.getAttribute('aria-pressed') !== 'true';
+      toggle.setAttribute('aria-pressed', String(open));
+      stage.explode(open);
+      tone();
+    });
+    // it opens taken apart, with reduced motion that is just the still exploded view
+    stage.explode(true);
+    show(shown);
+    panelCleanup = () => stage.dispose();
+  } catch {
+    dialog.querySelector('canvas').hidden = true;
+    toggle.disabled = true;
+  }
+}
+
 export async function openProgram(id) {
   if (id === 'teams') return openTeams();
+  if (id === 'inside') return openInside();
   const program = programs.find(item => item.id === id);
   if (!program) return;
   if (id === 'crew') {
@@ -315,9 +408,9 @@ export async function openProgram(id) {
     dialog.querySelectorAll('[data-person]').forEach(control => control.addEventListener('click', () => { select(Number(control.dataset.person)); tone(); }));
     select(0);
   }
-  if (id === 'work') showPanel('Our divisions.', 'SPS / Divisions', `<div class="division-list">${data.divisions.map(division => `<details><summary>${escapeHtml(division.name)}${icon('ChevronRight', 18)}</summary><p>${escapeHtml(division.description)}</p><ul>${division.work.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></details>`).join('')}</div><a class="command" href="${siteMode ? data.site.applicationUrl : `${currentSite}/join/`}" ${siteMode ? 'target="_blank" rel="noopener noreferrer"' : ''}>Join the team ${icon('ArrowUpRight', 18)}</a>`);
+  if (id === 'work') showPanel('Our divisions.', 'SPS / Divisions', `<div class="division-list">${data.divisions.map(division => `<details><summary>${escapeHtml(division.name)}${icon('ChevronRight', 18)}</summary><p>${escapeHtml(division.description)}</p><ul>${division.work.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></details>`).join('')}</div>${siteMode ? '' : `<a class="command" href="${currentSite}/join/">Join the team ${icon('ArrowUpRight', 18)}</a>`}`);
   if (id === 'journal') showPanel('Project updates.', 'SPS / Project', `<div class="story"><p class="large-copy">Two working prototypes.<br>A Game Boy-inspired handheld is next.</p><p>Our goal is to complete the handheld by June, bringing together custom PCB design, embedded firmware and mechanical enclosure design.</p><div class="milestone"><span>Future iteration</span><strong>2027-2028</strong><p>Schulich on a Chip is working on student-designed chips for a future SPS handheld.</p></div><p>No build logs have been published yet.</p>${siteMode ? '' : `<a class="panel-link" href="${currentSite}/handheld/">Explore the project ${icon('ArrowUpRight', 18)}</a>`}</div>`);
-  if (id === 'join') showPanel('Join the team.', 'SPS / Recruiting', `<div class="join-program"><img src="${activeTheme === 'cartridge' ? '/media/handheld-concept.webp' : '/media/handheld.webp'}" alt="SPS handheld ${activeTheme === 'cartridge' ? 'concept render' : 'colour concept'}" /><div><span class="program-status">Recruiting now</span><p class="large-copy">Build with us.</p><p>Help build the next handheld through electronics, embedded software, mechanical design, games, business or communications.</p><a class="command primary" href="${data.site.applicationUrl}" target="_blank" rel="noopener noreferrer">Apply to SPS ${icon('ArrowUpRight', 18)}</a><a class="panel-link" href="mailto:${data.site.publicContact.email}">${icon('Mail', 18)} Email SPS</a></div></div>`);
+  if (id === 'join' && !siteMode) showPanel('Join the team.', 'SPS / Recruiting', `<div class="join-program"><img src="${activeTheme === 'cartridge' ? '/media/handheld-concept.webp' : '/media/handheld.webp'}" alt="SPS handheld ${activeTheme === 'cartridge' ? 'concept render' : 'colour concept'}" /><div><span class="program-status">Recruiting now</span><p class="large-copy">Build with us.</p><p>Help build the next handheld through electronics, embedded software, mechanical design, games, business or communications.</p><a class="command primary" href="${data.site.applicationUrl}" target="_blank" rel="noopener noreferrer">Apply to SPS ${icon('ArrowUpRight', 18)}</a><a class="panel-link" href="mailto:${data.site.publicContact.email}">${icon('Mail', 18)} Email SPS</a></div></div>`);
   if (id === 'handheld') {
     const dialog = showPanel('Make it yours.', 'SPS / Colour concept', `<div class="inspector-scene"><canvas aria-label="SPS handheld model" tabindex="0"></canvas><img class="model-fallback" src="${activeTheme === 'cartridge' ? '/media/handheld-concept-front.webp' : '/media/handheld.webp'}" alt="SPS handheld enclosure concept" /></div><div class="inspector-tools"><div class="rotation-buttons">${button('ArrowLeft', 'model-left', 'Rotate handheld left')}${button('RotateCcw', 'model-reset', 'Reset handheld')}${button('ArrowRight', 'model-right', 'Rotate handheld right')}</div><label class="colour-input">${icon('Pipette', 18)} Shell <input type="color" value="#784ac3" aria-label="Shell colour" /></label><span>${activeTheme === 'cartridge' ? 'Concept model / illustrative screen' : 'Actual geometry / illustrative screen'}</span></div>`, 'hardware-panel');
     try {

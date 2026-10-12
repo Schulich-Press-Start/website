@@ -36,9 +36,10 @@ The site ships with noindex: `<meta name="robots">`, `X-Robots-Tag: noindex, nof
 
 Before flipping it:
 
-1. Resolve the private content checklist: member permissions, confirmed academic year, approved application/contact destinations and policy copy.
-2. Confirm the team copy, the year plan wording ("on sale by June 2027") and the recruiting state for Business and Communications.
-3. Check the PR preview on a phone and a laptop.
+1. Resolve the private content checklist: member permissions, confirmed academic year, approved contact destinations and policy copy.
+2. Confirm the team copy and the year plan wording ("on sale by June 2027"). The public website lists only the four teams with members (Embedded Hardware, Embedded Software, Game Design and Mechanical) and has no recruiting or application links. Business and Communications stay in the shared club data for the classic Astro site, which production doesn't serve, and reappear on the public website automatically once they have a member.
+3. Check the Inside the handheld exploded view on a phone and a laptop, including with reduced motion.
+4. Check the PR preview on a phone and a laptop.
 
 ### Rollback
 

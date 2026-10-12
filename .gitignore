@@ -24,6 +24,8 @@ dist-site/
 !.local/console-lab/verify-site.mjs
 !.local/console-lab/site-server.mjs
 !.local/console-lab/vercel-temp.mjs
+!.local/console-lab/cartridge-motion.js
+!.local/console-lab/public-data.mjs
 !.local/console-lab/cartridge/
 .local/console-lab/cartridge/*
 !.local/console-lab/cartridge/index.html
