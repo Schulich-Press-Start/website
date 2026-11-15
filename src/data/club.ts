@@ -41,7 +41,7 @@ export const club = clubSchema.parse({
       },
     },
     {
-      id: 'yassin-soliman', name: 'Yassin Soliman', linkedin: 'https://www.linkedin.com/in/yassinsoliman/',
+      id: 'yassin-soliman', name: 'Yassin Soliman', coFounder: true, linkedin: 'https://www.linkedin.com/in/yassinsoliman/',
       avatar: {
         src: '/images/team/yassin-soliman-ai.webp', alt: 'Mii-style portrait of Yassin Soliman.',
         width: 640, height: 768, approved: true, credit: 'AI-generated, member-approved.',
