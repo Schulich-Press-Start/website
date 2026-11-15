@@ -41,7 +41,7 @@ Private visual review is not public content. The user confirmed member approval 
 | --- | --- | --- |
 | Abdul Waase Qureshi | President and Co-Founder | https://www.linkedin.com/in/abdulwq/ |
 | Jonart Bajraktari | Embedded Hardware Lead and Co-Founder | https://www.linkedin.com/in/jonartb/ |
-| Yassin Soliman | Embedded Software Lead | https://www.linkedin.com/in/yassinsoliman/ |
+| Yassin Soliman | Embedded Software Lead and Co-Founder | https://www.linkedin.com/in/yassinsoliman/ |
 | Mujtaba Zia | Game Design Lead | https://www.linkedin.com/in/mujtaba-zia/ |
 | Saifullah Asad | Mechanical Lead | https://www.linkedin.com/in/saifasad/ |
 
