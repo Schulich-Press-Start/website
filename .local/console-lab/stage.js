@@ -215,6 +215,8 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
   display();
 
   const cartridges = [];
+  // resting bounds of everything on the workbench the hero copy must never sit on, see frameBesideCopy
+  const scenery = [];
   const board = new THREE.Group();
   if (mode === 'pocket') {
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.ShadowMaterial({ color: '#29434a', opacity: 0.16 }));
@@ -289,7 +291,7 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
     }
     if (!horizonGrid || !whiteGrid) {
       const mat = new THREE.Mesh(new RoundedBoxGeometry(6.3, 0.07, 5.1, 3, 0.18), new THREE.MeshStandardMaterial({ color: horizonGrid ? '#ffffff' : '#dadbdd', roughness: 0.8 }));
-      mat.position.set(0.4, -0.24, 0.25); mat.receiveShadow = true; scene.add(mat);
+      mat.position.set(0.4, -0.24, 0.25); mat.receiveShadow = true; scene.add(mat); scenery.push(new THREE.Box3().setFromObject(mat));
       const grid = new THREE.GridHelper(5.8, 29, '#9595a0', '#b8b8c1'); grid.position.set(0.4, -0.199, 0.25); grid.scale.z = 0.8; scene.add(grid);
     }
     canvas.dataset.workbench = horizonGrid ? 'horizon-grid' : 'mat';
@@ -311,6 +313,7 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
       cartridges.push(group); board.add(group);
     }
     scene.add(board);
+    for (const object of [model, ...cartridges]) scenery.push(new THREE.Box3().setFromObject(object));
     const cordPoints = [new THREE.Vector3(4.9, -.15, 3), new THREE.Vector3(4.1, -.15, 2), new THREE.Vector3(4.8, -.15, .9), new THREE.Vector3(5.1, -.15, -.4), new THREE.Vector3(4.3, -.15, -1.1)];
     const cord = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(cordPoints), 64, .075, 8, false), new THREE.MeshStandardMaterial({ color: '#f5e9e5', roughness: .5 }));
     cord.castShadow = true; scene.add(cord);
@@ -451,6 +454,72 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
     const distance = width / (pixels / box.width) / (2 * camera.aspect * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
     return { position: target.clone().add(new THREE.Vector3(0, 0, distance)), target };
   }
+  const benchTarget = new THREE.Vector3(0.5, 0, -0.15);
+  const copyRange = document.createRange();
+  const corner = new THREE.Vector3();
+  // one box per rendered line of the hero copy, in canvas pixels. the hidden blurbs of the other
+  // cartridges share the visible one's spot, so the framing already clears whichever gets picked
+  function copyLines(box) {
+    const lines = [];
+    for (const element of options.copy ?? []) {
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+      while (walker.nextNode()) {
+        if (!walker.currentNode.textContent.trim()) continue;
+        copyRange.selectNodeContents(walker.currentNode);
+        for (const rect of copyRange.getClientRects()) {
+          if (rect.width && rect.height) lines.push({ top: rect.top - box.top, bottom: rect.bottom - box.top, right: rect.right - box.left });
+        }
+      }
+    }
+    return lines;
+  }
+  function screenCorners(bounds, box) {
+    const points = [];
+    for (let index = 0; index < 8; index++) {
+      corner.set(index & 1 ? bounds.max.x : bounds.min.x, index & 2 ? bounds.max.y : bounds.min.y, index & 4 ? bounds.max.z : bounds.min.z).project(camera);
+      points.push({ x: (corner.x + 1) / 2 * box.width, y: (1 - corner.y) / 2 * box.height });
+    }
+    return points;
+  }
+  // how far these corners have to move right so their outline starts a gap past the end of the line.
+  // every segment between two corners lies inside the outline, so the leftmost point any of them
+  // reaches within the line's band is where the outline starts there
+  function clearance(points, line, gap) {
+    const top = line.top - gap;
+    const bottom = line.bottom + gap;
+    let left = Infinity;
+    for (let first = 0; first < points.length; first++) {
+      for (let second = first; second < points.length; second++) {
+        const a = points[first], b = points[second];
+        const low = Math.max(top, Math.min(a.y, b.y)), high = Math.min(bottom, Math.max(a.y, b.y));
+        if (low > high) continue;
+        for (const y of [low, high]) left = Math.min(left, a.y === b.y ? Math.min(a.x, b.x) : a.x + (b.x - a.x) * (y - a.y) / (b.y - a.y));
+      }
+    }
+    return left === Infinity ? 0 : line.right + gap - left;
+  }
+  // the hero copy is drawn over the canvas, so the workbench slides right until the mat, cartridges
+  // and handheld start past every line of it. when sliding alone would push them off the right edge,
+  // the camera also pulls back a step at a time until they fit beside the copy
+  function frameBesideCopy(box) {
+    const preferred = box.width >= 1000 ? box.width * 0.1 : 0;
+    const lines = copyLines(box);
+    const home = camera.position.clone();
+    let slide = preferred;
+    for (let step = 0; step <= 30; step++) {
+      camera.position.copy(home).sub(benchTarget).multiplyScalar(1 + step * 0.02).add(benchTarget);
+      camera.lookAt(benchTarget);
+      camera.updateMatrixWorld();
+      camera.updateProjectionMatrix();
+      const outlines = scenery.map(bounds => screenCorners(bounds, box));
+      const needed = Math.max(0, ...lines.flatMap(line => outlines.map(points => clearance(points, line, 24))));
+      slide = Math.max(preferred, needed);
+      // when the usual slide already clears the copy, the framing stays exactly as it was
+      if (needed <= preferred) break;
+      if (Math.max(...outlines.flat().map(point => point.x)) + slide <= box.width - 12) break;
+    }
+    camera.setViewOffset(box.width, box.height, -slide, 0, box.width, box.height);
+  }
   function resize() {
     const box = canvas.getBoundingClientRect();
     if (!box.width || !box.height) return;
@@ -459,15 +528,13 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
     if (mode === 'cartridge') {
       camera.clearViewOffset();
       const frame = horizonGrid ? options.frame?.getBoundingClientRect() : undefined;
-      if (frame?.width > 0 && frame.height > 0) {
-        camera.setViewOffset(frame.width, frame.height, box.left - frame.left, box.top - frame.top, box.width, box.height);
-      } else if (options.model === 'concept' && box.width >= 1000) {
-        // slide the workbench right on wide screens so the hero copy has clear space on the left
-        camera.setViewOffset(box.width, box.height, -box.width * 0.1, 0, box.width, box.height);
-      }
+      const framed = frame?.width > 0 && frame.height > 0;
+      // setViewOffset also sets the aspect to the frame's, and that is the aspect the pull back below goes by
+      if (framed) camera.setViewOffset(frame.width, frame.height, box.left - frame.left, box.top - frame.top, box.width, box.height);
       camera.position.set(6.6, 8.5, 10.2);
       if (camera.aspect < 1) camera.position.multiplyScalar(1.15);
-      camera.lookAt(0.5, 0, -0.15);
+      camera.lookAt(benchTarget);
+      if (!framed && options.model === 'concept') frameBesideCopy(box);
     } else if (mode === 'pocket') {
       model.position.set(0, 0, 0);
       model.rotation.set(0, -0.19, 0);
@@ -494,6 +561,7 @@ export async function createModelStage(canvas, mode = 'signal', options = {}) {
   }
   const observer = new ResizeObserver(resize); observer.observe(canvas);
   if (horizonGrid && options.frame) observer.observe(options.frame);
+  for (const element of options.copy ?? []) observer.observe(element);
   function pointerDown(event) { dragStart = { x: event.clientX, y: event.clientY }; lastRotation = model.rotation.y; }
   let hoverFrame = 0;
   let hoverEvent;

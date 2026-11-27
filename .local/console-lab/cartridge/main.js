@@ -121,7 +121,7 @@ setup('cartridge',async()=>{
   if(!stage){
     try{
       const {createModelStage}=await import('../stage.js');
-      stage=await createModelStage(document.querySelector('#stage'),'cartridge',{onSelect:id=>select(cartridges.findIndex(item=>item.id===id)),workbench:finish,frame:workbenchFrame,model:'concept'});
+      stage=await createModelStage(document.querySelector('#stage'),'cartridge',{onSelect:id=>select(cartridges.findIndex(item=>item.id===id)),workbench:finish,frame:workbenchFrame,model:'concept',copy:[document.querySelector('.cartridge-heading'),document.querySelector('.cartridge-copy-stack')]});
       document.querySelector('#stage-fallback').hidden=true;
     }catch{document.querySelector('#stage').hidden=true;document.body.dataset.stageFallback='true';}
   }
