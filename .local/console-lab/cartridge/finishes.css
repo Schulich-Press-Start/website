@@ -169,10 +169,11 @@ body[data-cartridge-finish] .boot-disc {
   filter: drop-shadow(0 12px 0 var(--workbench-shadow)) drop-shadow(20px 40px 40px #24153340);
 }
 
+/* the label is the sps logo, so its purple and the mark's size and spot follow design/reference/sps_alt_logo.png */
 body[data-cartridge-finish] .boot-disc::before {
   inset: 4.6rem 1.7rem 6.4rem;
   border-radius: 8px;
-  background: linear-gradient(180deg, #784ac3 0 72%, #fbf8f2 72%);
+  background: #564594;
   box-shadow: 0 0 0 5px #cbc2d6, inset 0 2px 6px #24153333;
 }
 
@@ -185,6 +186,6 @@ body[data-cartridge-finish] .boot-disc::after {
 }
 
 body[data-cartridge-finish] .boot-disc img {
-  width: 46%;
-  margin-top: -2.6rem;
+  width: 8.4rem;
+  margin-top: -2.8rem;
 }
