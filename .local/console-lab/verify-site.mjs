@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, webkit, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import sharp from 'sharp';
 import { startSiteServer, parseHeaders } from './site-server.mjs';
 
 const directory = fileURLToPath(new URL('../../dist-site/', import.meta.url));
@@ -185,6 +186,54 @@ try {
           assert(requests.every(url => url.startsWith(origin) || url.startsWith('data:')), `${size.name}: third-party request`);
           reports.push({ engine: engineName, viewport: size.name, passed: true });
           console.log(`PASS site/${engineName}/${size.name}`);
+        } finally { await context.close(); }
+      }
+      // the hero copy is drawn over the 3d workbench and axe can't see through a canvas. at these widths the
+      // white mat used to run under the copy, so hide the text and measure what is behind every line of it
+      for (const [width, height] of engineName === 'chromium' ? [[950, 700], [1024, 768], [1280, 800]] : []) {
+        const context = await browser.newContext({ viewport: { width, height }, reducedMotion: 'reduce' });
+        try {
+          const page = await context.newPage();
+          await page.goto(`${origin}/`);
+          await page.getByRole('button', { name: 'Press start', exact: true }).click();
+          await expect(page.locator('#stage')).toHaveAttribute('data-ready', 'true', { timeout: 15000 });
+          await page.mouse.move(0, 0);
+          const lines = await page.evaluate(() => [['kicker', '.cartridge-kicker'], ['headline', '.cartridge-heading h1'], ['intro', '#cartridge-lede'], ['stamp', '.physical-stamp'], ['blurb', '.cartridge-copy:not([aria-hidden])']].flatMap(([name, selector]) => {
+            const element = document.querySelector(selector);
+            if (!element?.checkVisibility()) return [];
+            const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+            const range = document.createRange();
+            const rects = [];
+            while (walker.nextNode()) {
+              if (!walker.currentNode.textContent.trim()) continue;
+              const large = Boolean(walker.currentNode.parentElement.closest('h1, h2'));
+              range.selectNodeContents(walker.currentNode);
+              for (const rect of range.getClientRects()) if (rect.width > 2 && rect.height > 2) rects.push({ name, large, x: rect.x, y: rect.y, width: rect.width, height: rect.height });
+            }
+            return rects;
+          }));
+          assert(lines.some(line => line.name === 'intro'), `${width}x${height}: the intro paragraph is showing`);
+          await page.addStyleTag({ content: '.cartridge-heading, .cartridge-heading *, .cartridge-copy-stack * { color: transparent !important; }' });
+          const { data, info } = await sharp(await page.screenshot()).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+          const linear = channel => { const value = channel / 255; return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4; };
+          for (const name of new Set(lines.map(line => line.name))) {
+            let pixels = 0;
+            let low = 0;
+            for (const line of lines.filter(item => item.name === name)) {
+              for (let y = Math.max(0, Math.floor(line.y)); y < Math.min(info.height, Math.ceil(line.y + line.height)); y++) {
+                for (let x = Math.max(0, Math.floor(line.x)); x < Math.min(info.width, Math.ceil(line.x + line.width)); x++) {
+                  const offset = (y * info.width + x) * 3;
+                  const luminance = 0.2126 * linear(data[offset]) + 0.7152 * linear(data[offset + 1]) + 0.0722 * linear(data[offset + 2]);
+                  pixels++;
+                  // white text needs 4.5:1, or 3:1 for the big headings
+                  if (1.05 / (luminance + 0.05) < (line.large ? 3 : 4.5)) low++;
+                }
+              }
+            }
+            assert(low / pixels <= 0.005, `${width}x${height}: the ${name} sits on ${(low / pixels * 100).toFixed(1)}% low contrast background`);
+          }
+          reports.push({ engine: engineName, viewport: `hero ${width}x${height}`, passed: true });
+          console.log(`PASS site/${engineName}/hero-copy-${width}x${height}`);
         } finally { await context.close(); }
       }
       const context = await browser.newContext({ javaScriptEnabled: false });
